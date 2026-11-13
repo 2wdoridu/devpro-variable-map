@@ -1,0 +1,87 @@
+/* 색 변수(devpro-common.css가 불러온다): 여러 화면이 같이 쓰는 색. 화면 CSS는 값을 직접 쓰지 않고 이 변수를 쓴다. --dp-dk-*는 다크 모드 색 */
+:root {
+  --dp-text:#1d2340;
+  --dp-text-2:#4b5578;
+  --dp-text-sub:#646c8a;
+  --dp-text-faint:#8a91a8;
+  /* 플레이스홀더(입력 전 안내 글자): 회색 배경(검색창)과 흰 배경(작성 화면 제목 · 내용 칸). 강조 입력(빛 번짐 스타일)은 따로 둔다 */
+  --dp-placeholder:#8f98b4;
+  --dp-placeholder-white:var(--dp-gray-75-2);
+  --dp-ui-gray:#7e859e;
+  /* 회색 입력 배경(--dp-field) 위 아이콘(검색창 돋보기). 그 배경 위 대비 4.59:1 */
+  --dp-field-icon:#56669a;
+  /* 고를 수 없거나 누를 수 없는 숫자·아이콘(날짜 선택의 고를 수 없는 날, 스핀 비활성 − +) */
+  --dp-disabled:#c9ceda;
+  --dp-slate:#535c74;
+  --dp-primary:#2b66d8;
+  --dp-primary-soft:#edf1fd;
+  /* 메인 컬러 글자: 흰 배경 위(4.65:1), 바탕 #f5f7fa·연한 파란 배경 위 또는 두 곳에 다 놓이는 글자(4.63:1 이상) */
+  --dp-primary-text:#146df3;
+  --dp-primary-text-tint:#0c64e9;
+  /* 입력 중 테두리: 일반 입력칸·검색창 1px. 강조 입력(로그인·메인 AI·전체 메뉴 검색창)은 --dp-primary 1.5px */
+  --dp-focus:var(--dp-ui-gray);
+  --dp-line:#ebedf2;
+  --dp-line-strong:#cdd2dc;
+  --dp-border:#dfe2ea;
+  --dp-bg:#f5f7fa;
+  --dp-field:#e6e9f0;
+  --dp-search-active-bg:var(--dp-blue-92-2);
+  --dp-pressed:#f0f2f6;
+  /* pressed 상태 색: 놓인 배경과 요소에 따라 정한 실제 색(덧칠 · 섞기 없음) */
+  --dp-pr-row:var(--dp-gray-96);
+  /* 흰 카드 · 흰 버튼, 진한 글자 버튼(달력 연 · 월, 이전 · 다음 달) */
+  --dp-pr-card:#e9eef8;
+  --dp-pr-face-soft:#dae3f9;
+  --dp-pr-primary-text:#183877;
+  --dp-pr-primary:#2558ba;
+  --dp-pr-danger:#af2833;
+  --dp-pr-gray:#dfe2e8;
+  --dp-pr-chip:#dbdee6;
+  --dp-pr-blue:#175bdb;
+  --dp-pr-violet:#7f57ce;
+  --dp-danger:#cc2e3b;
+  --dp-sun:#d6453d;
+  --dp-sat:#3d6fd1;
+  --dp-dk-text:#e6e7ea;
+  --dp-dk-text-2:#b4b7bf;
+  --dp-dk-text-sub:#8d919b;
+  --dp-dk-primary:#7aa2ff;
+  --dp-dk-focus:var(--dp-dk-text-sub);
+  --dp-dk-danger:#e8897e;
+  --dp-dk-bg:#121316;
+  --dp-dk-field:#3a3c43;
+  --dp-dk-line:#26282d;
+  --dp-dk-pressed:rgba(255,255,255,.06);
+  /* 밝기 단계 색: 역할 이름이 정해지지 않은 공용 색. 숫자는 HSL 밝기(%) */
+  --dp-blue-97:#f4f6fb;
+  --dp-blue-97-2:#f4f6fa;
+  --dp-gray-96:#f2f4f8;
+  --dp-blue-96:#f1f3f8;
+  --dp-gray-95:#eef0f5;
+  --dp-blue-92:#e4e8f2;
+  --dp-blue-92-2:#d4e2ff;
+  --dp-gray-91:#e3e6ee;
+  --dp-gray-90:#dfe3eb;
+  --dp-blue-90:#cad1ff;
+  --dp-gray-85:#d3d7e1;
+  --dp-gray-80:#c3c8d4;
+  --dp-gray-75:#b4bac8;
+  --dp-gray-75-2:#b4bacb;
+  --dp-gray-69:#a3a9bc;
+  --dp-gray-68:#a0a6ba;
+  --dp-violet-67:#9465f0;
+  --dp-gray-66:#a3a6ae;
+  --dp-blue-65:#8193cc;
+  --dp-blue-55:#1b6aff;
+  --dp-gray-51:#7b7f89;
+  --dp-gray-46:#6e727b;
+  --dp-gray-42:#5a647e;
+  --dp-gray-26:#3d3f46;
+  --dp-gray-20:#2e3036;
+  --dp-gray-19:#2c2e34;
+  --dp-gray-18:#2a2b31;
+  --dp-blue-16:#19203a;
+  --dp-gray-15:#1d2030;
+  --dp-gray-15-2:#222328;
+  --dp-gray-12:#1c1d21;
+}
