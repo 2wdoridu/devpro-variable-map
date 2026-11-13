@@ -1,0 +1,825 @@
+@import "devpro-tokens.css";
+/* 여러 화면이 함께 쓰는 스타일. 여기서 고치면 이 파일을 불러오는 모든 화면(로그인·메인·전체 메뉴 포함)과 컴포넌트 목록에 반영된다 */
+
+/* 누를 때 브라우저가 칠하는 기본 탭 하이라이트를 모든 요소에서 끈다. pressed 상태는 devpro-press.js가 붙이는 .pr로 각 컴포넌트가 정한다(다크 모드는 :active) */
+html { -webkit-tap-highlight-color:transparent; }
+/* 누를 수 있는 요소는 길게 눌러도 링크 메뉴(iOS)와 글자 선택이 뜨지 않게 한다 */
+:is(a[href], button, [role=button]) { -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; }
+
+/* 정보 표시: 제목 아래 메타 정보(.meta-bar). 메타 정보 글자는 바탕 #f5f7fa 대비 4.5:1 이상.
+   구분 기호는 뜻에 따라 나눠 쓴다.
+   - 세로선: 한 대상의 서로 다른 속성(직급│직책, 직책│부서)
+   - ›(.path-sep): 상하 경로(부서 경로)
+   - 가운뎃점(.meta-bar.dot): 기록 정보(작성자 · 작성 시각)
+   - 쉼표: 같은 종류의 나열(참석자)
+   기록 정보는 상세 화면 헤더 맨 아래에 둔다(공지는 제목 아래, 일정은 날짜·시각 행 아래) */
+
+/* 메타 정보 항목은 글자 기준선으로 맞추고, 세로선과 경로 꺾쇠의 세로 가운데를 글자 가운데에 맞춘다.
+   목록 행마다 세로 위치가 소수점으로 달라 글자와 기호가 서로 다르게 반올림되므로, 별도 레이어(will-change)로 그려 어느 행에서나 같은 결과가 나오게 한다 */
+.meta-bar { display:flex; flex-wrap:wrap; align-items:baseline; margin:0; font-size:14px; font-weight:500; color:var(--dp-text-sub); will-change:transform; }
+.meta-bar > span + span::before { content:""; display:inline-block; width:1px; height:10px; margin:0 8px; vertical-align:0.5px; background:var(--dp-line-strong); }
+.meta-bar .path-sep { vertical-align:13px; transform:none; }
+.meta-bar.dot > span + span::before { content:"·"; width:auto; height:auto; margin:0 6px; vertical-align:baseline; transform:translateY(-0.5px); background:none; }
+/* 목록 행 아래 메타 정보(.meta-bar.sm): 13px, 한 행. 넘치면 마지막 항목을 말줄임한다 */
+.meta-bar.sm { flex-wrap:nowrap; overflow:hidden; white-space:nowrap; font-size:13px; font-weight:500; }
+.meta-bar.sm > span { flex:none; }
+.meta-bar.sm > span:last-child { flex:0 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; }
+.meta-bar.sm > span + span::before { height:9px; vertical-align:0.5px; }
+.meta-bar.sm .path-sep { vertical-align:12px; transform:translateY(-0.5px); }
+/* 가벼운 메타 정보(.meta-bar.light): 13px · 굵기 500(글 목록 행 정보와 같음). 사용자 목록 행 아래 정보(조직도 검색 결과, 사람·작성자·참석자 선택). 세로선 · 꺾쇠는 .sm과 같은 값 */
+.meta-bar.light { font-size:13px; font-weight:500; }
+.meta-bar.light > span + span::before { height:9px; vertical-align:0.5px; }
+.meta-bar.light .path-sep { vertical-align:12px; transform:translateY(-0.5px); }
+
+/* 묶음 제목은 두 가지다.
+   진한 묶음 제목(.card-title): 카드 맨 위 제목과 카드 안 구분선 아래 묶음 제목. 15 · 600 진한 글자(메인 일정·공지사항, 캘린더·일정 검색 날짜별 목록, 사용자 상세 섹션) */
+.card-title { margin:0; font-size:15px; font-weight:600; line-height:normal; color:var(--dp-text); }
+/* 회색 묶음 제목(.group-title): 구분선 아래 묶음이나 전체 메뉴 목록 위 제목. 16 · 500 보조 회색(첨부파일 n, 전체 메뉴) */
+.group-title { margin:0; font-size:16px; font-weight:500; line-height:normal; color:var(--dp-text-sub); }
+html.dark .group-title { color:var(--dp-dk-text-sub); }
+
+/* 값 앞 라벨(.info-label): 값 앞에 붙는 회색 이름표. 16 · 400 보조 회색(일정 상세 '참석', 사용자 상세 '휴대폰 번호' 등).
+   라벨과 값을 놓는 배치(라벨 뒤 간격, 라벨 칸 폭)는 화면이 정한다.
+   좁은 목록 변형: 라벨이 든 목록에 .info-labels를 붙이면, 그 목록 폭이 260보다 좁을 때 라벨이 13이 된다 */
+.info-label { font-size:16px; font-weight:400; line-height:normal; color:var(--dp-text-sub); }
+.info-labels { container:info-labels / inline-size; }
+@container info-labels (max-width:260px) { .info-label { font-size:13px; } }
+
+/* 상세 화면 헤더(.hd): 메타 정보는 제목에서 한 단계 띄운다.
+   좌우 안쪽 4, 위 여백은 두지 않아 헤더 아래 → 첫 내용은 본문(.page) 위 여백 8이다 */
+.hd { padding:0 4px; }
+.hd .meta-bar { margin-top:14px; }
+/* 제목(공지 상세·사용자 상세)이나 일정 날짜·시각 행(일정 상세) 바로 아래 오는 메타 정보 */
+.hd h2 + .meta-bar, .hd .chips + .meta-bar { margin-top:8px; }
+
+/* 텍스트 버튼: 테두리·배경 없이 글자와 아이콘만 있는 버튼. 색은 회색(.tbtn.gray). 메인 컬러 추가 버튼은 변형(.tbtn.add, 아래)이다.
+   작은 버튼 크기(높이 32, 글자 14px SemiBold)이고 좌우 여백이 없어 글자 끝이 아래 목록 끝에 맞는다. 아이콘은 16px 고정 칸(.tbtn-ic)에 글자와 같은 색으로 칠하고, 글자와 칸 사이는 4px.
+   아이콘 모양은 칸 가운데에 약 10.5px 높이로 그려 모양이 달라도 글자와의 크기 비율이 비슷하게 보이게 한다.
+   폭이 좁은 모양(꺾쇠 등)은 칸 안 좌우 빈 공간이 커서 글자와 멀어 보이므로, --ic-x로 칸을 글자 쪽으로 당겨
+   +와 간격이 같아 보이게 맞춘다. 모양은 칸 안 가운데에 그리고(꺾쇠만 아래로 1px 길게 그려 높이 11.5px), 칸 전체를 1px 올려(--ic-y) 한글 글자 면 가운데에 맞춘다. +와 아래 꺾쇠는 모양이 칸 가운데에 있어 올리지 않는다.
+   새 아이콘은 .ic-이름 { --ic:url(16×16 SVG) } 규칙 하나로 추가하고, 폭이 좁으면 --ic-x를 함께 준다. 누르는 영역은 버튼 상자(높이 32 × 글자·아이콘 폭)와 같다 */
+.tbtn { position:relative; display:inline-flex; align-items:center; gap:var(--dp-btn-sm-gap); height:var(--dp-btn-sm-h); padding:0; border:0; background:none; font:inherit; font-size:var(--dp-btn-sm-fs); font-weight:600; line-height:normal; white-space:nowrap; text-decoration:none; cursor:pointer; }
+/* 텍스트 버튼은 상자(누르는 영역)는 높이 32로 두고, 배치에는 글자 한 행 높이만 차지하게 위아래를 같은 만큼 당긴다.
+   제목 행·건수 행에 놓여도 그 행의 높이와 위아래 간격이 버튼 높이 때문에 커지지 않는다 */
+.tbtn { margin-block:calc((1lh - var(--dp-btn-sm-h)) / 2); }
+.tbtn.gray { color:var(--dp-text-2); }
+/* 회색 버튼의 아이콘은 글자보다 한 단계 연하게 둬서 글자가 먼저 읽히게 한다 */
+.tbtn.gray .tbtn-ic { color:var(--dp-text-faint); }
+.tbtn.gray.pr, .tbtn.gray.pr .tbtn-ic { color:var(--dp-text); }
+/* 추가 버튼(.tbtn.add): 텍스트 버튼의 변형. + 아이콘(.tbtn-ic.ic-plus)을 앞에, 메인 컬러 글자를 뒤에 둔다.
+   캘린더 카드 제목 오른쪽 "추가", 작성 화면 입력 항목(일정 추가 참석자 "추가"·"파일 첨부", 주간보고 등록 "파일 첨부")이 쓴다.
+   좌우 안쪽 여백을 둔다. + 모양은 16px 칸 안쪽 2px부터 그려지므로, 오른쪽 여백을 2px 더 둬 보이는 좌우 여백을 맞춘다.
+   위아래는 당기지 않고 높이 32를 그대로 차지한다(놓이는 곳의 맞춤은 각 규칙이 정한다) */
+.tbtn.add { flex:none; margin-block:0; padding:0 10px 0 8px; border-radius:8px; color:var(--dp-primary-text); }
+.tbtn.add.pr { color:var(--dp-pr-primary-text); }
+/* 아이콘 모양은 칸(.tbtn-ic) 안 ::before에 글자색으로 칠한다 */
+.tbtn-ic { position:relative; top:var(--ic-y, -1px); flex:none; width:16px; height:16px; margin-left:var(--ic-x, 0px); }
+.tbtn-ic::before { content:""; position:absolute; inset:0; background:currentColor; -webkit-mask:var(--ic) center / var(--ic-s, 16px) var(--ic-s, 16px) no-repeat; mask:var(--ic) center / var(--ic-s, 16px) var(--ic-s, 16px) no-repeat; }
+.ic-chevron-right { --ic-x:-1.6px; --ic-s:14px; --ic:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M5.5 3 10.5 8.5 5.5 14' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+.ic-plus { --ic-y:0px; --ic:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 3v10M3 8h10' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E"); }
+.ic-chevron-down { --ic-y:0px; --ic:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+/* 오른쪽 꺾쇠(›)는 글자 대비 크게 보여 14px로 줄여 그리고, 칸 오른쪽 빈 공간(5px)만큼 바깥으로 빼 꺾쇠 끝을 아래 목록의 오른쪽 끝에 맞춘다 */
+.tbtn > .ic-chevron-right:last-child { margin-right:-5px; }
+html.dark .tbtn.gray { color:var(--dp-dk-text-2); }
+html.dark .tbtn.gray .tbtn-ic { color:var(--dp-dk-text-sub); }
+
+/* 하위 페이지 헤더(.top): 메인 헤더와 같은 높이·아이콘 위치·세 가지 상태.
+   - 기본: 바탕 없음. 아이콘(42px 칸)과 제목은 위에서 --dp-hdr-btn-top(10)에 두어 칸 아래 끝이 헤더 바닥에 닿는다
+   - 스크롤됨(.solid): 흰 반투명 유리 바탕 + 아래 선. 아이콘과 제목 위치는 기본과 같다
+   - 숨김(.hide): 아래로 스크롤하는 중에는 위로 숨고, 위로 스크롤하면 다시 나온다
+   아이콘 버튼 위치는 아래 '헤더 아이콘 버튼' 값을 쓴다 */
+/* 헤더 높이(--dp-header-h, 52): 하위 화면 헤더, 작성 화면 · 입력 팝업 · 바텀 시트 헤더가 같이 쓴다 */
+:root { --dp-header-h:52px; }
+/* 헤더 아이콘 버튼: 칸은 모두 --dp-hdr-btn(42). 헤더 왼쪽 · 오른쪽 끝 버튼(뒤로 ‹, 메뉴 ≡, 닫기 X)은 칸 끝을 헤더 끝에서 --dp-hdr-btn-edge(6)에 둔다(아이콘 모양 폭과 관계없음).
+   칸 위 끝은 헤더 위 끝에서 --dp-hdr-btn-top(10)이라 칸 아래 끝이 헤더 바닥(52)에 닿는다. 같은 헤더의 제목은 칸과 세로 가운데를 맞춘다.
+   버튼이 아닌 끝 요소(메인 로고, 시트 제목, 전체 메뉴 사용자 이름)는 --dp-hdr-edge(본문 좌우 여백 20)에 둔다 */
+:root { --dp-hdr-edge:20px; --dp-hdr-btn:42px; --dp-hdr-btn-edge:6px; --dp-hdr-btn-top:10px; }
+/* 헤더 제목 글자(17 · 600): 하위 화면 헤더(.top) · 작성 화면 헤더(.sh-top) · 바텀 시트 헤더(.sheet .sh)가 같이 쓴다. 제목 위치는 각 헤더 정의에서 정한다 */
+.top h1, .sh-top h1, .sh-top h2, .sheet .sh h2 { font-size:17px; font-weight:600; color:var(--dp-text); }
+html.dark :is(.top h1, .sh-top h1, .sh-top h2, .sheet .sh h2) { color:var(--dp-dk-text); }
+.top { position:sticky; top:0; z-index:20; height:calc(var(--dp-header-h) + var(--sat, env(safe-area-inset-top))); transition:transform .25s cubic-bezier(.2,.8,.2,1), background-color .25s, box-shadow .25s; }
+.top.hide { transform:translateY(-100%); }
+.top.solid { background:rgba(255,255,255,.85); -webkit-backdrop-filter:blur(20px) saturate(180%); backdrop-filter:blur(20px) saturate(180%); box-shadow:inset 0 -1px 0 var(--dp-line); }
+html.dark .top.solid { background:rgba(18,20,28,.85); box-shadow:inset 0 -0.5px 0 rgba(255,255,255,.08); }
+.top h1, .top .back, .top .menu, .top .find { position:absolute; top:calc(var(--dp-hdr-btn-top) + var(--sat, env(safe-area-inset-top))); height:var(--dp-hdr-btn); }
+.top h1 { left:60px; right:60px; display:flex; align-items:center; justify-content:center; margin:0; }
+.top .back, .top .menu, .top .find { width:var(--dp-hdr-btn); display:flex; align-items:center; justify-content:center; }
+/* 검색(.find)은 메뉴 칸 바로 왼쪽에 붙인다 */
+.top .back { left:var(--dp-hdr-btn-edge); } .top .menu { right:var(--dp-hdr-btn-edge); } .top .find { right:calc(var(--dp-hdr-btn-edge) + var(--dp-hdr-btn)); }
+/* 메뉴(≡) 이미지 42는 칸 크기가 아니라 menu.svg의 그림 크기다(가운데 ≡ 모양 폭 22). 칸 크기가 바뀌어도 모양 폭이 그대로이도록 숫자로 둔다 */
+.top .menu img { width:42px; height:42px; display:block; }
+/* 헤더 아이콘 pressed 상태: 배경 없이 아이콘을 메인 컬러로 */
+.top :is(.back, .find).pr { color:var(--dp-primary); }
+.top :is(.back, .find).pr svg :is(path, circle, line, rect) { stroke:var(--dp-primary); }
+.top .menu.pr img { content:url("assets/main/menu-primary.svg"); }
+@media (prefers-reduced-motion: reduce) { .top { transition:none; } }
+/* 닫기(X) 버튼(.x): 바텀 시트 · 입력 팝업 · 작성 화면 · 전체 메뉴 헤더 · 팝업 창 오른쪽 위가 같이 쓴다. 아이콘은 devpro-icons.js close-24-regular.
+   놓이는 자리(칸 오른쪽 끝 --dp-hdr-btn-edge 등)는 각 틀이 정한다. 다크 모드 밝은 색은 어두운 바탕에 놓이는 곳(확인 창, 전체 메뉴 헤더)만 */
+.x { width:var(--dp-hdr-btn); height:var(--dp-hdr-btn); display:flex; align-items:center; justify-content:center; padding:0; border:0; background:none; color:var(--dp-text); cursor:pointer; }
+.x.pr { color:var(--dp-primary); }
+html.dark :is(.confirm, .brand-top) .x { color:var(--dp-dk-text); }
+
+/* 이름 · 로고 헤더(.brand-top): 왼쪽에 로고나 사용자 이름을 두는 헤더. 메인(하위 화면 헤더 .top에 얹음) · 전체 메뉴가 같이 쓴다.
+   높이 52, 왼쪽 요소는 화면 끝에서 --dp-hdr-edge, 마지막 요소(오른쪽 끝 버튼)는 칸 끝을 --dp-hdr-btn-edge · 위 --dp-hdr-btn-top에 두고, 모든 요소의 세로 가운데를 버튼 칸 가운데에 맞춘다.
+   .top에 얹으면 상단 안전 영역을 높이 · 위 여백에 더한다 */
+.brand-top { box-sizing:border-box; display:flex; align-items:center; height:var(--dp-header-h); padding:var(--dp-hdr-btn-top) var(--dp-hdr-btn-edge) 0 var(--dp-hdr-edge); }
+.brand-top > :last-child { margin-left:auto; }
+.top.brand-top { height:calc(var(--dp-header-h) + var(--sat, env(safe-area-inset-top))); padding-top:calc(var(--dp-hdr-btn-top) + var(--sat, env(safe-area-inset-top))); }
+.top.brand-top .menu { position:relative; inset:auto; }
+
+
+/* 경로 구분(›): 글꼴의 › 문자는 한글보다 훨씬 작게 그려지므로, 같은 자리에 꺾쇠를 그린다. 16px 칸에 글자 높이 정도로 작게, 선 1px로 그려 누르는 이동 꺾쇠(선 2px)와 구분한다.
+   문자는 화면 읽기용으로 남기고 크기만 0으로 숨긴다. 색 #7e859e(흰 배경 3.66:1, 바탕 #f5f7fa 3.41:1) */
+.path-sep { display:inline-block; width:16px; height:16px; margin:0 1px; vertical-align:12px; transform:translateY(-0.5px); font-size:0; background:var(--dp-ui-gray); -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M6.25 4.25 10 8 6.25 11.75' fill='none' stroke='%23000' stroke-width='1' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 16px 16px no-repeat; mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M6.25 4.25 10 8 6.25 11.75' fill='none' stroke='%23000' stroke-width='1' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 16px 16px no-repeat; }
+html.dark .path-sep { background:var(--dp-dk-text-sub); }
+
+/* 검색창(.search-field): 메인·전체 메뉴를 뺀 모든 화면에서 쓰는 검색창.
+   시선을 끄는 빛 번짐 대신 연한 회색 배경(#e6e9f0)으로 흰 카드와 구분한다. 회색 배경 위 대비: 아이콘·안내 문구 #56669a 4.59:1, 지우기 버튼 3.01:1, 입력 글자 12.6:1.
+   입력 중에는 흰 배경 + 중간 회색 1px 테두리(#7e859e, 바탕 대비 3.41:1)로 바뀐다.
+   구성: [.lead 검색 아이콘] [input] [.clear 지우기 버튼(20px 원, 누르는 영역 36px 칸)].
+   지우기 버튼은 빛 번짐 검색창(전체 메뉴) 안에서도 .search-clear로 같은 모양을 쓴다 */
+.search-field { box-sizing:border-box; display:flex; align-items:center; gap:6px; min-width:0; min-height:48px; padding:6px; background:var(--dp-field); border-radius:24px; box-shadow:inset 0 0 0 1px transparent; transition:background-color .2s, box-shadow .2s; }
+/* 흰 배경 위 검색창(.search-field.on-white): 참석자 선택처럼 흰 시트 위에서는 회색 배경을 한 단계 연하게(#f2f4f8) 둔다. 안내 문구·아이콘 5.07:1, 지우기 버튼 3.32:1 */
+.search-field.on-white { background:var(--dp-gray-96); }
+.search-field:focus-within { background:#fff; box-shadow:inset 0 0 0 1px var(--dp-focus); }
+/* 앞 아이콘: 칸 끝 → 아이콘 14(칸 안쪽 6 + 8), 아이콘 → 글자 10(칸 사이 6 + 입력 안쪽 4) */
+.search-field .lead { flex:none; height:36px; padding-left:8px; display:flex; align-items:center; color:var(--dp-field-icon); }
+.search-field input { flex:1; min-width:0; height:36px; padding:0 4px; border:0; outline:0; background:none; font:inherit; font-size:16px; font-weight:500; color:var(--dp-text); -webkit-appearance:none; appearance:none; }
+.search-field input::placeholder { color:var(--dp-placeholder); opacity:1; }
+.search-field input::-webkit-search-cancel-button { display:none; -webkit-appearance:none; }
+.search-field .clear, .search-clear { position:relative; flex:none; width:36px; height:36px; display:flex; align-items:center; justify-content:center; padding:0; border:0; background:none; color:var(--dp-ui-gray); cursor:pointer; }
+.search-field .clear[hidden], .search-clear[hidden] { display:none; }
+.search-field .clear.pr, .search-clear.pr { color:var(--dp-text); }
+@media (prefers-reduced-motion: reduce) { .search-field { transition:none; } }
+
+/* 토스트(.toast): 화면 아래 가운데에 잠깐 뜨는 알림. 상자는 글자 길이만큼이고, 화면 폭 − 40을 넘으면 다음 행으로 넘긴다. 글자 16px, 안쪽 여백 14·16px, 모서리 12px.
+   띄우기·숨기기·표시 시간은 devpro-toast.js(dpToast)가 맡는다. 보일 때 .show
+   아래 위치는 화면 아래 24px이고, 아래에 고정된 요소가 있으면 그 맨 위에서 24px로 올린다: 하단 내비(html.quick-nav), 페이지네이션(html.has-pager), 아래 고정 버튼(html.has-list-write, .people-picker) */
+:root { --dp-toast-nav:0px; --dp-toast-pager:0px; --dp-toast-btn:0px; }
+html.quick-nav { --dp-toast-nav:var(--dp-tabbar-h); }
+html.has-pager { --dp-toast-pager:var(--dp-pager-h); }
+/* 아래 고정 버튼은 버튼 + 아래 12만큼. 페이지네이션이 버튼 위에 뜨면 버튼 영역 전체(위 8 + 버튼 + 아래 12)를 더한다 */
+html.has-list-write { --dp-toast-btn:calc(var(--dp-btn-lg-h) + 12px); }
+html.has-list-write.has-pager { --dp-toast-btn:calc(var(--dp-btn-lg-h) + 20px); }
+/* 참석자 선택은 하단 내비·페이지네이션 위를 덮는 패널이라 그 안의 토스트는 완료 버튼 위로만 올린다 */
+.people-picker { --dp-toast-nav:0px; --dp-toast-pager:0px; --dp-toast-btn:calc(var(--dp-btn-lg-h) + 12px); }
+.toast { position:fixed; left:20px; right:20px; bottom:calc(24px + var(--dp-toast-nav) + var(--dp-toast-pager) + var(--dp-toast-btn) + var(--sab, env(safe-area-inset-bottom))); z-index:70; width:fit-content; margin:0 auto; padding:14px 16px; border-radius:12px; background:var(--dp-gray-15); color:#fff; font-size:16px; font-weight:500; line-height:normal; word-break:keep-all; opacity:0; transition:opacity .2s; pointer-events:none; }
+.toast.show { opacity:.94; }
+html.dark .toast { background:var(--dp-gray-19); }
+@media (prefers-reduced-motion: reduce) { .toast { transition:none; } }
+
+/* 버튼 크기. 큰 버튼(--dp-btn-lg-*, 50): 아래 고정 확인 버튼, 확인 창 버튼, 입력 팝업 취소, 연락 버튼, 작은 테두리 버튼 큰 크기(.chip-btn.lg) / 중간 버튼(--dp-btn-md-*, 36): 일시 팝업 취소·확인(.pk-f) / 작은 버튼(--dp-btn-sm-*, 32): 텍스트 버튼, 추가 버튼, 작은 테두리 버튼. 작은 버튼의 아이콘 → 글자는 --dp-btn-sm-gap(4).
+   로그인 버튼 높이(--dp-btn-xl-h, 56)는 로그인 화면 전용 예외 값이다 */
+:root { --dp-btn-xl-h:56px; --dp-btn-lg-h:50px; --dp-btn-lg-fs:16px; --dp-btn-md-h:36px; --dp-btn-md-fs:15px; --dp-btn-sm-h:32px; --dp-btn-sm-fs:14px; --dp-btn-sm-gap:4px; }
+/* 큰 버튼 공통: 높이 50, 모서리 10, 글자 16px SemiBold. 색은 각 버튼이 정한다 */
+.bottom-btn, .confirm .act button, .form-sheet-foot .cancel { height:var(--dp-btn-lg-h); padding:0; border:0; border-radius:10px; font:inherit; font-size:var(--dp-btn-lg-fs); font-weight:600; text-align:center; cursor:pointer; }
+/* 연한 배경 회색 버튼(취소): 확인 창과 입력 팝업이 같이 쓴다 */
+.confirm .act button, .form-sheet-foot .cancel { background:var(--dp-gray-96); color:var(--dp-slate); }
+.confirm .act button.pr, .form-sheet-foot .cancel.pr { background:var(--dp-pr-gray); }
+
+/* 아래 고정 확인 버튼(.bottom-btn): 화면 아래에 고정되는 확인·저장·완료 버튼. 스크롤되는 내용과 다른 층이라 화면 가장자리 여백(20)보다 좁게
+   좌우·위 8, 아래 12를 띄우고(목록 쪽에 붙고 하단 내비·화면 끝과는 떨어짐), 아래에는 홈 바 영역을 더한다. 메인 컬러 #2b66d8(흰 글자 대비 5.26:1) */
+.bottom-btn { flex:none; display:block; margin:8px 8px calc(12px + var(--sab, env(safe-area-inset-bottom))); background:var(--dp-primary); color:#fff; }
+/* 스크롤 끝 → 아래 고정 요소(--dp-scroll-end, 32): 끝까지 내렸을 때 마지막 묶음·행·칸 끝에서 아래 고정 버튼 위 끝까지.
+   아래 고정 요소가 없으면 화면 아래 끝(하단 내비가 보이면 바 위 끝)까지다(하위 화면 본문 .page, 전체 메뉴, 설정).
+   버튼 위에 있는 스크롤 영역은 아래 여백으로 --dp-scroll-end-pad(버튼 위 바깥 여백 8을 뺀 값)를 쓰고, 고정된 버튼 영역이 본문을 덮는 입력 팝업은 버튼 영역 높이를 더해 쓴다 */
+:root { --dp-scroll-end:32px; --dp-scroll-end-pad:calc(var(--dp-scroll-end) - 8px); }
+.bottom-btn.pr { background:var(--dp-pr-primary); }
+/* 비활성(.bottom-btn:disabled): 고를 것을 고르지 않았을 때. 회색 배경 #e3e6ee + 보조 회색 글자(4.15:1, 비활성이라 대비 기준 예외) */
+.bottom-btn:disabled { background:var(--dp-gray-91); color:var(--dp-text-sub); cursor:default; }
+
+/* 하단 바로가기 바(.tabbar): 화면 아래 고정, 위쪽에 구분선(--dp-line 1px). 칸마다 아이콘 36px 칸 + 글자 14px.
+   선택한 칸은 .on과 aria-current를 붙이고, 아이콘은 선택(.i-on)·기본(.i-off) 두 장을 넣어 두고 보이기만 바꾼다.
+   바는 devpro-tabbar.js가 넣고, 설정에서 하단 내비를 켜면(html.quick-nav) 모든 화면에 보인다. 시트·확인 창·팝업은 바를 덮고, 전체 메뉴는 바 위까지만 덮는다. 작성 화면(<html data-screen="write">)에는 바를 넣지 않고, 아래 고정 버튼이 있는 패널을 열면 dpTabbar.hide(true)로 감춘다.
+   바가 보이면 본문 아래 여백, 토스트, 아래 고정 버튼을 바 높이(--dp-tabbar-h)만큼 올린다 */
+:root { --dp-tabbar-h:55px; }
+html:not(.quick-nav) body > .tabbar { display:none; }
+.tabbar { position:fixed; left:0; right:0; bottom:0; z-index:25; display:flex; align-items:flex-start; padding:2px 12px calc(6px + var(--sab, env(safe-area-inset-bottom))); background:#fff; box-shadow:0 -1px 0 var(--dp-line); }
+.tabbar > * { flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; padding:0; border:0; background:none; font:inherit; font-size:14px; font-weight:500; color:var(--dp-slate); text-decoration:none; cursor:pointer; }
+.tabbar .ic { position:relative; width:36px; height:36px; margin-bottom:-5px; }
+.tabbar .ic img { position:absolute; left:0; top:0; }
+.tabbar > .on { color:var(--dp-text); }
+.tabbar > .on .i-off, .tabbar > :not(.on) .i-on { display:none; }
+/* pressed: 선택한 칸 모양(선택 아이콘, 글자 --dp-text) */
+.tabbar > .pr { color:var(--dp-text); }
+.tabbar > .pr .i-on { display:inline; }
+.tabbar > .pr .i-off { display:none; }
+html.dark .tabbar { background:#18191d; box-shadow:0 -0.5px 0 rgba(255,255,255,.08); }
+html.dark .tabbar > * { color:var(--dp-gray-46); }
+html.dark .tabbar > * img { filter:brightness(.5); }
+html.dark .tabbar > .on { color:var(--dp-dk-text); font-weight:600; }
+html.dark .tabbar > .on img { filter:saturate(.85); }
+
+/* 흰 카드(.card): 바탕 #f5f7fa 위의 흰 배경, 모서리 18px */
+/* 흰 카드 안쪽 여백(--dp-card-pad, 20): 모든 흰 카드가 위·아래·좌·우에 같이 쓴다. 칸 끝 기준 */
+:root { --dp-card-pad:20px; }
+.card { background:#fff; border-radius:18px; }
+/* 고정 영역 아래 선(.edge-line): 위에 고정된 영역 밑으로 스크롤하는 목록 영역에 붙인다. 내리면(.scrolled, devpro-edge.js) 맨 위에 선이 생기고 맨 위에서는 없다.
+   헤더가 스크롤될 때 생기는 선(.top.solid)과 같은 색 */
+.edge-line::before { content:""; position:sticky; top:0; z-index:3; display:block; height:1px; margin-bottom:-1px; }
+.edge-line.scrolled::before { background:var(--dp-line); }
+html.dark .edge-line.scrolled::before { background:rgba(255,255,255,.08); }
+/* 헤더 아래 검색 영역(.pin-head): 검색이 있는 최상위 화면에서 검색창·조건 칩을 헤더(.top.pinned) 바로 아래에 고정한다. 헤더는 숨기지 않는다.
+   위아래 여백(.page 위 여백 8px, 아래 12px)은 음수 바깥 여백으로 상쇄해 맨 위 배치를 바꾸지 않는다. 내리면(.scrolled, devpro-edge.js) 아래에 선 */
+.top.pinned { background:var(--dp-bg); }
+.pin-head { position:sticky; top:calc(var(--dp-header-h) + var(--sat, env(safe-area-inset-top))); z-index:15; margin:-8px -20px -12px; padding:8px 20px 12px; background:var(--dp-bg); }
+.pin-head.scrolled { box-shadow:0 1px 0 var(--dp-line); }
+/* 검색 영역 아래 끝 → 첫 내용 20: 건수 행이 있으면 건수 글자, 없으면 첫 카드(주간보고 목록, 조직도 내 정보)까지 */
+.pin-head:not(.on-white) + * { margin-top:20px; }
+/* 흰 바탕 화면(.page 여백 없이 화면 폭을 쓰는 선택 화면)의 헤더 아래 검색 영역 */
+.pin-head.on-white { margin:0; padding:8px 20px 12px; background:#fff; }
+html.dark .top.pinned, html.dark .pin-head { background:var(--dp-dk-bg); }
+html.dark .pin-head.scrolled { box-shadow:0 0.5px 0 rgba(255,255,255,.08); }
+/* 목록 불러오기(devpro-paged.js): 목록 아래 불러오는 중 스피너·끝 문구(.list-more)와 화면 아래 페이지네이션(.pager).
+   페이지네이션은 이전·다음 화살표 사이에 '지금 / 전체' 페이지를 두는 캡슐이다. 배경은 흰색 65%이고 뒤 화면은 10px 흐리게 한다. 하단 내비가 있으면 그 위, 없으면 뷰포트 아래(하단 안전 영역 위)에서 12px 띄워 가운데에 둔다.
+   보이는 동안(html.has-pager) 본문 아래 여백과 토스트를 캡슐 높이 + 12px(--dp-pager-h)만큼 올린다 */
+:root { --dp-pager-h:60px; }
+.list-more { display:flex; justify-content:center; padding-top:16px; }
+.list-more:empty { display:none; }
+.list-more svg { display:block; color:var(--dp-ui-gray); animation:dp-spin .8s linear infinite; }
+.list-more .end { margin:0; font-size:14px; font-weight:500; color:var(--dp-text-sub); }
+@keyframes dp-spin { to { transform:rotate(360deg); } }
+.pager { position:fixed; left:50%; bottom:calc(12px + var(--sab, env(safe-area-inset-bottom))); z-index:24; display:flex; align-items:center; height:48px; padding:0 4px; transform:translateX(-50%); border-radius:999px; background:rgba(255,255,255,.65); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); border:1px solid var(--dp-blue-92); box-shadow:0 8px 24px rgba(37,49,81,.14); }
+.pager[hidden] { display:none; }
+.quick-nav .pager { bottom:calc(12px + var(--dp-tabbar-h) + var(--sab, env(safe-area-inset-bottom))); }
+.pager button { display:flex; align-items:center; justify-content:center; width:40px; height:40px; padding:0; border:0; background:none; color:var(--dp-ui-gray); cursor:pointer; }
+.pager button:disabled { opacity:.35; cursor:default; }
+/* pressed: 배경 없는 아이콘 버튼과 같이 아이콘 메인 컬러 */
+.pager button.pr { color:var(--dp-primary); }
+.pager .now { margin:0; padding:0 8px; font-size:15px; font-weight:600; color:var(--dp-text); white-space:nowrap; }
+.pager .now span { margin-left:4px; font-weight:500; color:var(--dp-text-sub); }
+html.has-pager .page { padding-bottom:calc(var(--dp-scroll-end) + var(--dp-pager-h) + var(--sab, env(safe-area-inset-bottom))); }
+html.has-pager.quick-nav .page { padding-bottom:calc(var(--dp-scroll-end) + var(--dp-tabbar-h) + var(--dp-pager-h) + var(--sab, env(safe-area-inset-bottom))); }
+@media (prefers-reduced-motion: reduce) { .list-more svg { animation-duration:2.4s; } }
+/* 카드 묶음(.card-stack): 흰 카드를 세로로 쌓을 때 카드 사이 간격은 카드가 아니라 묶음에서 한 번에 준다 */
+.card-stack { display:flex; flex-direction:column; gap:10px; }
+/* 안쪽 여백이 있는 카드(사용자 상세 정보 묶음, 조직도 내 정보) */
+.card.pad { padding:var(--dp-card-pad); }
+html.dark .card { background:var(--dp-gray-12); }
+/* 건수 행(.count-row > .count): 목록 위 '전체 N건', ''검색어' 검색 결과 N건'. 검색어는 <b class="q">, 숫자는 <b>로 감싼다. 단위는 글·일정 '건', 사람 '명', 메뉴 '개'.
+   오른쪽에 동작(정렬, 모두 펼치기 등)을 둘 때는 공통 텍스트 버튼(.tbtn)을 쓴다 */
+.count-row { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:20px 4px 8px; }
+/* 화면 폭을 쓰는 목록(행 글자가 20에서 시작) 위의 건수 행(.count-row.flush): 좌우를 행 글자와 같은 20에 맞춘다 */
+.count-row.flush { margin-left:20px; margin-right:20px; }
+/* 이미 좌우 여백 20 안에 있는 카드 없는 목록(전체 메뉴 검색 결과) 위의 건수 행(.count-row.bare): 좌우 0으로 행 글자에 맞춘다 */
+.count-row.bare { margin-left:0; margin-right:0; }
+/* 고정 영역 아래 스크롤 목록(.edge-line)의 첫 건수 행: 목록 칸 위 여백 12와 더해 고정 영역에서 20(일정 검색과 같음) */
+.edge-line > .count-row:first-child { margin-top:8px; }
+/* 흰 바탕 화면의 헤더 아래 검색 영역(.pin-head.on-white, 아래 안쪽 여백 12) 바로 다음 목록의 첫 건수 행도 같은 20 */
+.pin-head.on-white + * > .count-row:first-child { margin-top:8px; }
+.count { margin:0; font-size:14px; font-weight:500; color:var(--dp-text-sub); }
+.count b { font-weight:600; color:var(--dp-text-2); }
+/* 검색어(.count .q): 메인 컬러 글자. 흰 시트·회색 바탕 양쪽에 놓여 tint를 쓴다 */
+.count .q { color:var(--dp-primary-text-tint); }
+/* 카운터 배지(.counter): 항목 이름 뒤 개수(조직도 트리·사람 선택의 인원수). 회색 알약에 숫자만 쓴다. 글자 대비 6.42:1 */
+.counter { flex:none; display:inline-block; padding:2px 6px; border-radius:10px; background:var(--dp-gray-95); font-size:12px; font-weight:600; line-height:normal; color:var(--dp-text-2); }
+
+/* 선 없는 목록 카드(.list-card): 메인 일정·메인 공지·캘린더 일정 목록·일정 검색.
+   카드 제목 다음 .list-rows 안에 행(.list-row)을 둔다. 행 사이는 선 없이 행 높이로 나눈다 */
+/* 제목 있는 목록의 제목 → 첫 행(--dp-list-title-gap, 16): 선 없는 목록 카드와 상세 화면 첨부파일 목록이 같이 쓴다. 같은 단계 행 사이 < 제목 → 첫 행 < 앞 묶음과의 사이 */
+:root { --dp-list-title-gap:16px; }
+.card.list-card { padding:var(--dp-card-pad); }
+.list-rows { padding-top:var(--dp-list-title-gap); }
+/* 여백으로 나눈 목록(.list-rows.spaced): 항목 사이를 행 높이가 아니라 여백 16(--dp-list-item-gap)으로 나눈다. 사용자 상세 섹션.
+   항목 사이에 여백이 있어 제목 → 첫 항목은 그보다 넓은 18(--dp-list-title-gap-spaced)로 둔다 */
+:root { --dp-list-item-gap:16px; --dp-list-title-gap-spaced:18px; }
+.list-rows.spaced { display:flex; flex-direction:column; gap:var(--dp-list-item-gap); padding-top:var(--dp-list-title-gap-spaced); }
+.list-row { display:flex; align-items:center; gap:12px; width:100%; min-height:44px; color:inherit; text-decoration:none; }
+/* 일정 행(.ev.list-row, devpro-schedule-data.js scheduleRow): 메인 일정·캘린더 일정 목록·일정 검색 결과. 시각 15 · 500(폭 44, 고정폭 숫자) · 제목 16 · 700(한 행, 넘치면 말줄임) · 유형 태그(.tag) */
+.ev { position:relative; }
+.ev .time { width:44px; flex:none; font-size:15px; font-weight:500; color:var(--dp-text-2); font-variant-numeric:tabular-nums; }
+.ev .ttl { flex:1; min-width:0; font-size:16px; font-weight:700; color:var(--dp-text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+html.dark .ev .time { color:var(--dp-dk-text-2); }
+html.dark .ev .ttl { color:var(--dp-dk-text); }
+/* 방금 추가한 일정 행(.ev.new, 캘린더): 연한 파란 배경으로 잠깐 강조했다가 사라진다 */
+.ev.new { animation:ev-new 1.6s ease-out; }
+@keyframes ev-new { 0%, 40% { background:#eaf1ff; } 100% { background:transparent; } }
+@media (prefers-reduced-motion: reduce) { .ev.new { animation:none; } }
+/* pressed 상태: 선 없는 목록 행(.list-row, .file-row)은 배경을 글자 밖 좌우 12px까지 넓히고 모서리를 둥글게 한다.
+   화면별 선 있는 목록 행(.press)은 감싼 카드 끝까지 채운다(--fill은 devpro-press.js가 행 위치로 정한다) */
+.list-row.pr, .file-row.pr { background:var(--dp-pr-row) !important; box-shadow:-12px 0 0 var(--dp-pr-row), 12px 0 0 var(--dp-pr-row); border-radius:10px; }
+.press { --press-fill:card; }
+.press * { --press-fill:initial; }
+.press.pr { background:var(--dp-pr-row) !important; box-shadow:var(--fill, none) !important; }
+.card.line-list:has(.pr) { overflow:hidden; }
+/* 누를 수 있는 카드(a.card, button.card): 바탕 위 흰 배경을 한 단계 진한 파랑 회색으로 */
+:is(a, button).card.pr { background:var(--dp-pr-card); }
+html.dark .list-row:active, html.dark .press:active { background:var(--dp-dk-pressed); }
+/* 스크롤바: 화살표·트랙 없이 가는 둥근 막대. 페이지 스크롤(html)과, 전체 메뉴·시트·선택 목록처럼 화면 안에서 따로 스크롤하는 영역(.scroll-thin)에 쓴다.
+   세로 막대는 폭 10, 가로 막대(캘린더 달력 카드 등)는 높이 10 */
+html::-webkit-scrollbar, .scroll-thin::-webkit-scrollbar { width:10px; height:10px; }
+html::-webkit-scrollbar-track, .scroll-thin::-webkit-scrollbar-track { background:transparent; }
+html::-webkit-scrollbar-button, .scroll-thin::-webkit-scrollbar-button { display:none; height:0; }
+html::-webkit-scrollbar-thumb, .scroll-thin::-webkit-scrollbar-thumb { border:3px solid transparent; border-radius:10px; background:rgba(100,108,138,.28) padding-box; }
+/* PC 미리보기에서 마우스를 스크롤바에 올리면 막대를 진하게 한다 */
+html::-webkit-scrollbar-thumb:hover, .scroll-thin::-webkit-scrollbar-thumb:hover { background-color:rgba(100,108,138,.45); }
+@supports (-moz-appearance:none) { html, .scroll-thin { scrollbar-width:thin; scrollbar-color:rgba(100,108,138,.28) transparent; } }
+
+/* 선 있는 목록 카드(.line-list): 전사 공지, 조직도 트리·검색 결과, 주간보고. 행 사이 선과 행 위아래 여백은 각 목록이 정한다 */
+.card.line-list { padding:var(--dp-card-pad); }
+/* 글 목록 행(.post-row): 선 있는 목록 카드 안에서 제목(.nt, 16 · 700, 넘치면 말줄임), 아래 4에 정보 행(.meta-bar.sm)을 위아래로 놓은 행. 높이 62(--dp-text-row-h), 내용은 세로 가운데, 행 사이 선. 전사 공지, 주간보고 */
+/* 글이 많은 두 행 목록 행 높이(--dp-text-row-h, 62): 글 목록 행, 전체 메뉴 검색 결과 행. 이름 위주의 짧은 사용자 목록 행은 56 */
+:root { --dp-text-row-h:62px; }
+.post-row { display:flex; align-items:center; gap:12px; width:100%; min-height:var(--dp-text-row-h); padding:0; color:inherit; text-decoration:none; text-align:left; }
+.post-row + .post-row { border-top:1px solid var(--dp-line); }
+.post-row > div { flex:1; min-width:0; }
+.post-row .nt { display:block; font-size:16px; font-weight:700; line-height:normal; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.post-row .meta-bar { margin-top:4px; }
+/* 카드 없이 화면 폭을 다 쓰는 선 있는 목록(.line-rows): 행 사이 선을 좌우 20px 안쪽에 긋는다(.line-list 카드 안 선과 같은 위치).
+   펼친 항목(aria-expanded=true) 바로 아래 선만 진하게 긋는다 */
+.line-rows > * { position:relative; }
+.line-rows > * + *::before { content:""; position:absolute; top:0; left:20px; right:20px; height:1px; background:var(--dp-line); pointer-events:none; }
+.line-rows > [aria-expanded=true] + *::before { background:var(--dp-line-strong); }
+
+/* 빈 상태 문구(.empty): 목록이 비었을 때 카드 안 가운데에 둔다(높이 72px).
+   검색 결과가 없을 때(.empty.result)는 위아래 여백 36px에 두 행까지 쓴다. 이 문구만 담은 카드는 카드 종류와 관계없이 위아래 안쪽 여백을 두지 않아 높이가 같다(두 행 108).
+   글자 #646c8a(흰 배경 5.18:1, 바탕 #f5f7fa 4.81:1) */
+.empty { display:flex; align-items:center; justify-content:center; min-height:72px; margin:0; font-size:15px; font-weight:500; line-height:normal; text-align:center; color:var(--dp-text-sub); }
+.empty.result { display:block; min-height:0; padding:36px 0; }
+.card:has(> .empty.result:only-child) { padding-block:0; }
+html.dark .empty { color:var(--dp-dk-text-sub); }
+
+/* 드롭다운 목록(.dropdown): 칩·버튼을 누르면 아래에 펼쳐지는 선택 목록. 최소 폭 160px, 행 높이 44px.
+   선택한 항목은 .on(또는 aria-selected=true)으로 메인 컬러 + 체크 표시. 위치(position·left·top)는 화면에서 정한다 */
+.dropdown { min-width:160px; padding:6px; background:#fff; border:1px solid var(--dp-blue-92); border-radius:12px; box-shadow:0 8px 24px rgba(37,49,81,.14); }
+.dropdown[hidden] { display:none; }
+.dropdown button { display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; height:44px; padding:0 12px; border:0; border-radius:8px; background:none; font:inherit; font-size:15px; font-weight:500; color:var(--dp-text); text-align:left; white-space:nowrap; cursor:pointer; }
+.dropdown button.on, .dropdown button[aria-selected=true] { font-weight:600; color:var(--dp-primary-text); }
+.dropdown button.pr { background:var(--dp-pr-row); }
+.dropdown button.on::after, .dropdown button[aria-selected=true]::after { content:""; width:16px; height:16px; background:currentColor; -webkit-mask:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M3 8.5l3.2 3L13 4.5' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>") center/contain no-repeat; mask:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M3 8.5l3.2 3L13 4.5' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>") center/contain no-repeat; }
+html.dark .dropdown { background:var(--dp-gray-15-2); border-color:var(--dp-gray-20); box-shadow:0 8px 24px rgba(0,0,0,.4); }
+html.dark .dropdown button { color:var(--dp-dk-text); }
+html.dark .dropdown button.on, html.dark .dropdown button[aria-selected=true] { color:var(--dp-dk-primary); }
+
+/* 키보드 포커스 표시: 키보드로 이동할 때만(:focus-visible) 버튼·링크·선택 요소(체크박스·라디오)를 메인 컬러 2px 테두리로 2px 띄워 감싼다(흰 배경 대비 5.26:1).
+   손가락·마우스로 누를 때는 그리지 않는다. 입력칸은 '입력 중 테두리'로 나타낸다.
+   변형: 드롭다운 목록의 선택지는 테두리가 옆 선택지·목록 끝에 겹치므로 연한 파란 배경으로 나타낸다 */
+:is(button, a, [role=button], input[type=checkbox], input[type=radio]):focus-visible { outline:2px solid var(--dp-primary); outline-offset:2px; }
+.dropdown button:focus-visible { outline:none; background:var(--dp-blue-97); }
+
+/* 체크박스·라디오 pressed: 누르는 행·라벨(.pr) 안의 표시 칸(기본 체크박스·라디오, 화면이 그린 체크·라디오 칸 [data-mark])을 0.9배로 줄인다.
+   켜짐·꺼짐과 칸 색(화면마다 메인 컬러·진한 남색)에 관계없이 같은 규칙을 쓴다. 토글(.toggle-switch)도 같은 선택 요소라 토글 전체를 같게 줄인다. 다크 모드는 .pr이 없어 :active로 같게 한다 */
+:is(input[type=checkbox], input[type=radio], [data-mark]) { transition:transform .1s; }
+.pr :is(input[type=checkbox], input[type=radio], [data-mark], .toggle-switch), .toggle-switch.pr, html.dark :is(label, button):active :is(input[type=checkbox], input[type=radio], [data-mark], .toggle-switch), html.dark .toggle-switch:active { transform:scale(.9); }
+@media (prefers-reduced-motion: reduce) { :is(input[type=checkbox], input[type=radio], [data-mark]) { transition:none; } }
+/* 키보드로 포커스를 옮길 때 위에 남는 헤더(52px)와 아래 고정 버튼(70px)·하단 내비에 가리지 않게 스크롤 여백을 둔다(WCAG 2.4.11) */
+html { scroll-padding-top:calc(var(--dp-header-h) + var(--sat, env(safe-area-inset-top))); scroll-padding-bottom:calc(70px + var(--sab, env(safe-area-inset-bottom))); }
+html.quick-nav { scroll-padding-bottom:calc(70px + var(--dp-tabbar-h) + var(--sab, env(safe-area-inset-bottom))); }
+
+/* 하위 화면 기본: 바탕 #f5f7fa, 글자 #1d2340. 홈은 화면에서 바탕을 따로 정한다 */
+body { font-family:"Pretendard", -apple-system, sans-serif; color:var(--dp-text); background:var(--dp-bg); min-height:100vh; -webkit-text-size-adjust:100%; }
+
+/* 상세 화면 제목: 헤더(.hd) 안의 제목. 22px Bold, 단어 단위로 행을 바꾼다 */
+.hd h2 { margin:0; font-size:22px; font-weight:700; line-height:normal; word-break:keep-all; }
+
+/* 검색어 강조: 검색 결과 안의 검색어를 메인 컬러 글자로 표시한다 */
+mark { background:none; color:var(--dp-primary-text); }
+
+/* 일정 종류 태그(.tag): 목록·상세 공통. 색은 아래 .t-종류 클래스가 정한다 */
+.tag { display:inline-block; flex:none; padding:4px 8px; border-radius:6px; font-size:13px; font-weight:600; }
+/* 일정 유형 색: 유형 이름 → 키는 devpro-schedule-data.js의 TAGS. 태그 칩·유형 선택 칩은 .t-키(--c 글자 · --b 배경).
+   라이트 칩은 흰 카드와 회색 바탕(#f5f7fa) 양쪽에서 보이도록 유형별로 맞춘 값이다. 배경은 회색 바탕 대비 1.08~1.15, 글자는 칩 배경 대비 4.6 이상.
+   비슷한 유형은 색상을 벌려 나눈다(채용 빨강 · 교육 주황 · 비상주 금색 · 미팅 초록 · 투입일 청록 · 휴가 파랑 · 회의 보라 · 행사 자홍) */
+:is(.t-meet, .t-off, .t-edu, .t-mtg, .t-hire, .t-event, .t-in, .t-out, .t-remote) { color:var(--c); background:var(--b); }
+.t-meet { --c:#6a4dde; --b:#e8e8ff; } html.dark .t-meet { --c:#bcb3e2; --b:rgba(150,135,215,.16); }
+.t-off { --c:#2067bb; --b:#d7edff; } html.dark .t-off { --c:#a6c0df; --b:rgba(110,150,205,.16); }
+.t-edu { --c:#a05801; --b:#feeadb; } html.dark .t-edu { --c:#dcb88f; --b:rgba(200,150,95,.16); }
+.t-mtg { --c:#297731; --b:#deefde; } html.dark .t-mtg { --c:#9ccaac; --b:rgba(100,170,125,.16); }
+.t-hire { --c:#b4413e; --b:#fee4e2; } html.dark .t-hire { --c:#e0a69e; --b:rgba(205,120,110,.16); }
+.t-event { --c:#a24191; --b:#f8e5f3; } html.dark .t-event { --c:#dfa9c3; --b:rgba(200,120,160,.16); }
+.t-in { --c:#017272; --b:#d5efef; } html.dark .t-in { --c:#95c9c2; --b:rgba(95,170,160,.16); }
+.t-out { --c:#5b667e; --b:#e3e7f0; } html.dark .t-out { --c:#b4b7bf; --b:rgba(140,150,175,.2); }
+.t-remote { --c:#7b6602; --b:#f3ebcd; } html.dark .t-remote { --c:#d3bd8e; --b:rgba(190,160,100,.16); }
+
+/* 하위 화면 본문(.page): 좌우 20px, 아래는 스크롤 끝 여백(--dp-scroll-end)에 홈 바 영역만큼 더 띄운다 */
+.page { padding:8px 20px calc(var(--dp-scroll-end) + var(--sab, env(safe-area-inset-bottom))); }
+/* 메인 본문: 헤더가 본문 안에 들어가 위 여백이 없다. 하단 내비가 보이면 본문 아래를 바 높이만큼 더 띄운다 */
+.page.home { position:relative; padding-top:0; }
+.quick-nav .page { padding-bottom:calc(var(--dp-scroll-end) + var(--dp-tabbar-h) + var(--sab, env(safe-area-inset-bottom))); }
+/* 본문 칸 스크롤(<html class="body-scroll">, body에 .scroll-thin): 페이지 대신 body가 스크롤된다. 하단 내비가 켜지면 body가 내비 위에서 끝나 스크롤바도 내비 위까지만 생긴다.
+   body 배경은 내용과 함께 스크롤된다(background-attachment:local). 스크롤 위치는 devpro-nav.js의 dpScroller()로 읽는다 */
+html.body-scroll { height:100%; overflow:hidden; background:var(--dp-bg); scroll-padding:0; }
+html.dark.body-scroll { background:var(--dp-dk-bg); }
+:root.body-scroll > body { height:100%; min-height:0; overflow-y:auto; background-attachment:local; scroll-padding-top:calc(var(--dp-header-h) + var(--sat, env(safe-area-inset-top))); scroll-padding-bottom:calc(70px + var(--sab, env(safe-area-inset-bottom))); }
+:root.body-scroll.quick-nav > body { height:calc(100% - var(--dp-tabbar-h) - var(--sab, env(safe-area-inset-bottom))); scroll-padding-bottom:70px; }
+html.body-scroll.quick-nav .page { padding-bottom:var(--dp-scroll-end); }
+html.body-scroll.quick-nav.has-pager .page { padding-bottom:calc(var(--dp-scroll-end) + var(--dp-pager-h)); }
+
+/* 작은 테두리 버튼(.chip-btn): 아이콘 + 짧은 글자. 칩이 아니라 버튼이고, 작은 버튼 크기(높이 32 · 글자 14)를 쓴다. 예: 주간보고 등록 "최근 글" */
+.chip-btn { position:relative; display:inline-flex; align-items:center; gap:var(--dp-btn-sm-gap); white-space:nowrap; height:var(--dp-btn-sm-h); padding:0 12px 0 9px; border:1px solid var(--dp-line-strong); border-radius:999px; background:none; font:inherit; font-size:var(--dp-btn-sm-fs); font-weight:600; color:var(--dp-text-2); cursor:pointer; }
+.chip-btn.pr { color:var(--dp-text); border-color:var(--dp-ui-gray); }
+/* 큰 크기 변형(.chip-btn.lg): 폭 전체 · 큰 버튼 크기(높이 50 · 모서리 10 · 글자 16), 아이콘 없이 글자 가운데. 테두리 · 글자색 · 누를 때 규칙은 작은 테두리 버튼과 같다 */
+.chip-btn.lg { display:flex; justify-content:center; width:100%; height:var(--dp-btn-lg-h); padding:0 16px; border-radius:10px; font-size:var(--dp-btn-lg-fs); }
+/* 빨간 글자 변형(.chip-btn.danger): 로그아웃처럼 앱에서 나가는 동작. 누를 때도 빨간 글자 */
+.chip-btn.danger, .chip-btn.danger.pr { color:var(--dp-danger); }
+
+/* Choice Chip(.types): 가로로 넘기는 칩 그룹에서 하나를 고른다(aria-checked). 고르지 않은 칩은 흰 배경 + 테두리만, 글자 #646c8a(5.18:1).
+   고른 칩은 그 유형의 일정 배지 색(--c 글자 · --b 배경, devpro-schedule-data.js의 .t-유형)으로 보인다. 유형 색이 없는 그룹은 연한 파란 배경 + 메인 컬러 글자(4.66:1) */
+/* 칩 사이(--dp-chip-gap, 8): 유형 칩, 필터 칩, 선택한 사람 칩 행이 같이 쓴다 */
+:root { --dp-chip-gap:8px; }
+.types { display:flex; gap:var(--dp-chip-gap); overflow-x:auto; scrollbar-width:none; cursor:grab; user-select:none; -webkit-user-select:none; }
+.types::-webkit-scrollbar { display:none; }
+/* 화면 폭 칩 그룹(.types.in-sheet, 일정 추가 유형): 화면 양 끝까지 넘기도록 그룹 자체에 좌우 여백을 둔다 */
+.types.in-sheet { padding:0 20px 16px; }
+.types button { flex:none; height:32px; padding:0 12px; border:0; border-radius:8px; font:inherit; font-size:14px; font-weight:600; cursor:pointer; transition:background-color .15s, color .15s; }
+.types button:not([aria-checked=true]) { background:#fff; box-shadow:inset 0 0 0 1px var(--dp-line-strong); color:var(--dp-text-sub); }
+.types button[aria-checked=true] { background:var(--b, var(--dp-primary-soft)); color:var(--c, var(--dp-primary-text-tint)); }
+/* pressed: 고르지 않은 칩은 꺼진 필터 칩과 같이 글자 --dp-text + 테두리 --dp-ui-gray, 유형 색이 없는 고른 칩은 켜진 필터 칩과 같이 배경 --dp-pr-face-soft */
+.types button:not([aria-checked=true]).pr { color:var(--dp-text); box-shadow:inset 0 0 0 1px var(--dp-ui-gray); }
+.types button[aria-checked=true]:not([class^="t-"], [class*=" t-"]).pr { background:var(--dp-pr-face-soft); }
+
+/* 선택한 사람 칩(.p-chip): 칩 전체가 빼기 버튼(<button>)이다. 이름 + 빼기 아이콘(.p-x). 선택 상태(옅은 파랑)와 겹치지 않게 회색 배경에 진한 글자.
+   빼기 아이콘은 선 색을 currentColor로 그려 --dp-ui-gray를 따른다 */
+.p-chip { flex:none; display:inline-flex; align-items:center; gap:2px; height:32px; padding:0 4px 0 12px; border:1px solid var(--dp-blue-97-2); border-radius:8px; background:var(--dp-blue-97-2); font:inherit; font-size:14px; font-weight:600; color:var(--dp-text); cursor:pointer; }
+.p-chip.pr { background:var(--dp-pr-chip); border-color:var(--dp-pr-chip); }
+.p-chip.pr .p-x { color:var(--dp-text); }
+/* 체크 칸(.ck): 사람 선택 목록 행(role=checkbox)의 체크 표시. 22×22, 모서리 6, 테두리 1.5px --dp-ui-gray(흰 배경 대비 3:1 이상).
+   켜진 행(aria-checked=true)은 진한 남색 칸 + 흰 체크(칸 안 svg). 꺼진 칸은 체크를 숨긴다. 누를 때는 체크박스 pressed 규칙(0.9배)을 따른다 */
+.ck { flex:none; display:flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:6px; box-shadow:inset 0 0 0 1.5px var(--dp-ui-gray); background:#fff; color:#fff; transition:background-color .12s, box-shadow .12s, transform .1s; }
+.ck svg { opacity:0; }
+[aria-checked=true] > .ck { background:var(--dp-text); box-shadow:none; }
+[aria-checked=true] > .ck svg { opacity:1; }
+.p-chip .p-x { width:26px; height:26px; display:flex; align-items:center; justify-content:center; color:var(--dp-ui-gray); }
+
+/* 바텀 시트(.sheet): 아래에서 올라오는 선택 창(기간 선택·상세 검색·작성자 선택). 보일 때 .show.
+   구성: .panel(흰 배경, 위 모서리 20) 안에 .sh(헤더: 제목 h2 + 닫기 .x)와 .body(내용, 넘치면 안에서 스크롤) */
+.sheet { position:fixed; inset:0; z-index:60; display:flex; align-items:flex-end; background:rgba(17,20,33,0); transition:background-color .25s; }
+.sheet.show { background:rgba(17,20,33,.4); }
+.sheet .panel { width:100%; max-height:90vh; display:flex; flex-direction:column; border-radius:20px 20px 0 0; background:#fff; transform:translateY(100%); transition:transform .25s cubic-bezier(.2,.8,.2,1); }
+.sheet.show .panel { transform:none; }
+.sheet .sh { box-sizing:border-box; flex:none; display:flex; align-items:center; gap:16px; height:var(--dp-header-h); padding:var(--dp-hdr-btn-top) var(--dp-hdr-btn-edge) 0 var(--dp-hdr-edge); }
+.sheet .sh h2 { flex:1; margin:0; }
+/* 헤더 아래 → 첫 요소 8(입력 팝업 .form-sheet-body와 같음). 아래는 스크롤 끝 → 아래 버튼 공통 여백 */
+.sheet .body { overflow-y:auto; overscroll-behavior:contain; padding:8px 20px var(--dp-scroll-end-pad); }
+@media (prefers-reduced-motion: reduce) { .sheet, .sheet .panel { transition:none; } }
+/* 확인 창(.confirm): 되돌릴 수 없는 동작 전에 한 번 묻는다. 보일 때 .show. 위험한 동작 버튼은 .del(빨강). 창 폭은 화면 좌우 32를 뺀 폭, 넓은 화면에서는 최대 400으로 가운데 */
+.confirm { position:fixed; inset:0; z-index:70; display:flex; align-items:center; justify-content:center; padding:32px; background:rgba(17,20,33,.4); opacity:0; visibility:hidden; transition:opacity .2s, visibility .2s; }
+.confirm.show { opacity:1; visibility:visible; }
+/* 글자만 있는 창은 위 여백 38. 위에 상태 아이콘(.dlg-ic)이나 닫기(.dlg-top)가 있으면 24 */
+.confirm > div { box-sizing:border-box; width:100%; max-width:400px; padding:38px 20px 20px; border-radius:20px; background:#fff; text-align:center; transform:scale(.96); transition:transform .2s cubic-bezier(.2,.8,.2,1); }
+.confirm > div:has(> .dlg-ic, > .dlg-top) { padding-top:24px; }
+.confirm.show > div { transform:none; }
+.confirm p { margin:0; font-size:18px; font-weight:700; color:var(--dp-text); }
+.confirm .desc { margin-top:6px; font-size:15px; font-weight:500; color:var(--dp-text-sub); }
+.confirm .act { display:flex; gap:8px; margin-top:32px; }
+.confirm .act button { flex:1; }
+.confirm .act .del { background:var(--dp-danger); color:#fff; }
+/* 실행 버튼(.ok): 메인 컬러. 덮는 범위를 화면 전체가 아니라 감싼 요소로 할 때는 .local */
+.confirm .act .ok { background:var(--dp-primary); color:#fff; }
+.confirm .act .ok.pr { background:var(--dp-pr-primary); }
+.confirm .act .del.pr { background:var(--dp-pr-danger); }
+.confirm.local { position:absolute; }
+html.dark .confirm { background:rgba(0,0,0,.55); }
+html.dark .confirm > div { background:#1e2025; }
+html.dark .confirm p { color:#f1f2f4; }
+html.dark .confirm .desc { color:#a3a7b1; }
+html.dark .confirm .act button { color:#c9ccd3; background:var(--dp-gray-19); }
+html.dark .confirm .act .ok { color:var(--dp-dk-bg); background:var(--dp-dk-primary); }
+html.dark .confirm .act .del { color:#fff; background:var(--dp-danger); }
+@media (prefers-reduced-motion: reduce) { .confirm, .confirm > div { transition:none; } }
+
+/* 연락 버튼(.acts): 전화·메일처럼 나란히 놓는 흰 버튼. 아이콘 + 메인 컬러 글자 */
+.acts { display:flex; gap:8px; margin-top:16px; }
+.acts a { flex:1; display:flex; align-items:center; justify-content:center; gap:6px; height:var(--dp-btn-lg-h); border-radius:10px; background:#fff; text-decoration:none; font-size:var(--dp-btn-lg-fs); font-weight:600; color:var(--dp-primary-text); }
+.acts a.pr { background:var(--dp-pr-card); }
+
+/* 필터 칩(.filter-chips): 검색 조건을 켜고 끄는 글자 폭 칩. 높이 32 · 글자 14(검색창 아래 칩 공통 높이). 켜진 칩은 aria-pressed=true로 체크 + 옅은 파랑(글자 4.66:1).
+   여러 개를 켤 수 있고, 하나만 고르는 그룹은 화면에서 나머지를 끈다 */
+.filter-chips { display:flex; flex-wrap:wrap; gap:var(--dp-chip-gap); }
+/* 선택한 사람 칩 행(.sel-chips): 검색창 바로 아래, 고른 순서대로 .p-chip을 한 행에 늘어놓고 넘치면 옆으로 민다. 비면 숨긴다.
+   검색창과는 8px만 띄운다(한 묶음). 좌우 여백·아래 목록과의 간격은 쓰는 곳에서 정한다 */
+.sel-chips { display:flex; gap:var(--dp-chip-gap); margin-top:8px; overflow-x:auto; scrollbar-width:none; }
+.sel-chips::-webkit-scrollbar { display:none; }
+.sel-chips:empty { display:none; }
+/* 참석자 선택(.people-picker, devpro-people-picker.js): 참석자 선택 화면과 일정 추가 안 참석자 선택이 같이 쓰는 전체 화면.
+   헤더(작성 화면 헤더 .sh-top: 왼쪽 이전 단계 ‹ + 가운데 제목 + 오른쪽 닫기 X) · 검색창과 선택한 사람 칩 행(.pin-head.on-white) · 목록(.pk-list, 안에서 스크롤) · 아래 완료 버튼.
+   다른 화면 위에서 열면 옆에서 넘어오고(.show), 따로 열린 화면(.solo)은 움직임 없이 바로 보인다. 일정 추가(z-index 61) 위에 덮는다 */
+.people-picker { position:fixed; inset:0; z-index:63; display:flex; flex-direction:column; background:#fff; color:var(--dp-text); transform:translateX(100%); visibility:hidden; transition:transform .3s cubic-bezier(.2,.8,.2,1), visibility .3s; }
+.people-picker.show { transform:none; visibility:visible; }
+.people-picker.solo { transition:none; }
+:where(.people-picker button:not(.bottom-btn)) { font:inherit; color:inherit; background:none; border:0; padding:0; cursor:pointer; text-align:left; }
+/* 칩 행은 화면 양 끝까지 넘긴다 */
+.people-picker .sel-chips { margin:8px -20px 0; padding:0 20px; }
+.people-picker .pk-list { flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; padding-bottom:var(--dp-scroll-end-pad); }
+/* 사용자 목록 행(.pp): 이름(.tx > .nm), 아래 보조 정보(.meta-bar.light, 위 4)를 위아래로 놓은 행. 높이 56, 내용은 세로 가운데. 앞에 선택 칸(체크·라디오)을 둘 수 있다.
+   조직도 검색 결과·구성원, 참석자 선택, 작성자 선택이 쓴다. 카드 없이 화면 폭을 쓰는 목록(참석자·작성자 선택)에서는 좌우 20, 들여쓰기는 --pl */
+.pp { display:flex; align-items:center; gap:12px; width:100%; min-height:56px; color:inherit; text-decoration:none; text-align:left; }
+.pp .tx { flex:1; display:flex; flex-direction:column; min-width:0; }
+.pp .nm { font-size:16px; font-weight:700; color:var(--dp-text); }
+.pp .meta-bar { margin-top:4px; }
+:is(.people-picker, .writer-sheet) .pp { padding:0 20px 0 var(--pl, 20px); }
+/* 부서 행(.dp): 이름 + 인원수 배지 + 펼침 꺾쇠(48, 조직도 부서 행과 같음). 들여쓰기는 --pl */
+.people-picker .dp { display:flex; align-items:center; gap:12px; width:100%; min-height:48px; padding:0 20px 0 var(--pl, 20px); }
+.people-picker .dp .nm { flex:0 1 auto; min-width:0; font-size:16px; font-weight:500; color:var(--dp-text); }
+/* 이름과 인원수 배지 사이는 조직도 트리와 같은 10(행 간격 12에서 2를 뺀다). 배지 뒤 빈 곳은 꺾쇠까지 비운다 */
+.people-picker .dp .counter { margin:0 auto 0 -2px; }
+.people-picker .dp .fold { flex:none; width:40px; height:40px; margin-right:-10px; display:flex; align-items:center; justify-content:center; color:var(--dp-text-sub); pointer-events:none; }
+/* 한 명만 고를 때(single)의 라디오 */
+.people-picker .rd { flex:none; width:22px; height:22px; border-radius:50%; box-shadow:inset 0 0 0 1.5px var(--dp-ui-gray); background:#fff; }
+.people-picker [aria-checked=true] > .rd { box-shadow:inset 0 0 0 6px var(--dp-text); }
+@media (prefers-reduced-motion: reduce) { .people-picker { transition:none; } }
+/* 필터 칩 모양은 유형 칩(.types)과 같다: 모서리 8, 글자 14 · 600, 꺼진 글자 보조 회색 */
+.filter-chips button { flex:none; display:flex; align-items:center; gap:4px; height:32px; padding:0 12px; border:1px solid var(--dp-line-strong); border-radius:8px; background:#fff; font:inherit; font-size:14px; font-weight:600; color:var(--dp-text-sub); cursor:pointer; }
+.filter-chips button svg { display:none; }
+.filter-chips button[aria-pressed=false].pr { color:var(--dp-text); }
+.filter-chips button[aria-pressed=false].pr { border-color:var(--dp-ui-gray); }
+.filter-chips button[aria-pressed=true] { padding-left:9px; background:var(--dp-primary-soft); border-color:var(--dp-primary); color:var(--dp-primary-text-tint); font-weight:600; }
+.filter-chips button[aria-pressed=true] svg { display:block; }
+.filter-chips button[aria-pressed=true].pr { background:var(--dp-pr-face-soft); }
+/* 입력 크기 변형(.filter-chips.form): 라벨 + 입력칸 틀 안의 켜고 끄는 항목. 항목을 폭에 맞춰 같은 너비로 나누고 입력칸과 같은 높이 48 · 모서리 10 · 테두리, 글자 16 */
+.filter-chips.form { display:grid; grid-auto-columns:1fr; grid-auto-flow:column; }
+.filter-chips.form button { justify-content:center; height:48px; padding:0 12px; border-color:var(--dp-line-strong); border-radius:10px; font-size:16px; color:var(--dp-text); }
+.filter-chips.form button[aria-pressed=false] { font-weight:500; }
+/* 켜진 항목: 흰 배경 + 진한 남색 테두리 1.5 + 남색 체크·글자(라디오·체크 칸과 같은 선택 색). 누르면 흰 버튼 pressed 배경 */
+.filter-chips.form button[aria-pressed=true] { padding-left:12px; background:#fff; border:1.5px solid var(--dp-text); color:var(--dp-text); }
+.filter-chips.form button[aria-pressed=true].pr { background:var(--dp-pr-card); }
+
+/* 상세 화면 본문 배경(.content-card): 일정 상세·공지 상세의 흰 배경. 위치(위쪽 간격)는 화면이 정한다. 안쪽 여백은 흰 카드 기본 20 */
+.content-card { background:#fff; border-radius:18px; padding:var(--dp-card-pad); }
+
+/* 상세 화면 구역 구분(.detail-sec): 정보 묶음 위에 구분선을 긋고, 앞 묶음 끝 → 선 20, 선 → 묶음 첫 요소 20(칸 끝 기준).
+   일정 상세 참석, 사용자 상세 섹션, 첨부파일 목록(.files)이 같이 쓴다 */
+.detail-sec, .files { margin-top:20px; padding-top:20px; border-top:1px solid var(--dp-line); }
+/* 첨부파일 목록(.files): 흰 배경 안 마지막 묶음. 위 구분선(상세 화면 구역 구분) + "첨부파일 n" 제목(회색 묶음 제목 .group-title) + 클립 아이콘 행(누르면 내려받기) */
+/* 제목 → 첫 파일 행은 선 없는 목록 카드의 제목 → 첫 행과 같은 --dp-list-title-gap */
+.files h3 { margin:0 0 var(--dp-list-title-gap); }
+.file-row { display:flex; align-items:center; gap:10px; width:100%; min-height:44px; padding:0; border:0; background:none; font:inherit; text-align:left; cursor:pointer; }
+.file-row > svg { flex:none; color:var(--dp-ui-gray); }
+.file-row span { flex:1; min-width:0; font-size:16px; font-weight:700; line-height:normal; color:var(--dp-text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.file-row small { flex:none; font-size:14px; font-weight:500; color:var(--dp-text-sub); }
+/* 빼기 변형(.file-row.removable): 작성 화면에서 고른 파일. 행은 누르지 않고 오른쪽 빼기 버튼(.rm, 32 · 아이콘 16)만 누른다. 행 사이는 선 없이 행 높이로 나눈다 */
+.file-row.removable { cursor:default; }
+.file-row .rm { flex:none; width:32px; height:32px; margin-right:-6px; display:flex; align-items:center; justify-content:center; padding:0; border:0; border-radius:10px; background:none; color:var(--dp-ui-gray); cursor:pointer; }
+.file-row .rm.pr { color:var(--dp-text); }
+
+/* 날짜 선택 도구(.cal): 일시 팝업·기간 선택 시트 안 달력. 그리는 코드는 devpro-date-picker.js */
+/* 여러 행 글의 행간(--dp-lh-multi): 본문, 여러 행 입력칸, 주소처럼 두 행 이상 이어지는 글에만 쓴다 */
+:root { --dp-lh-multi:1.5; }
+/* 월 달력 공통 치수(캘린더 화면 달력·날짜 선택 도구가 함께 쓴다) */
+:root { --cal-max:480px; --cal-mpick-max:440px; --cal-num:40px; --cal-row:48px; --cal-wd-size:14px; --cal-num-size:17px; }
+/* 달력 연·월 행과 월 선택(날짜 선택 도구). 쓰는 화면에서는 DatePicker.ymChooser가 연·월 행을 '2026.10'으로 바꾸고 연도·월 선택(.ps-choice)을 연다.
+   연·월 버튼(.mlbl)을 누르면 달력 격자 자리에 월 선택(.mpick)이 열린다. 이전·다음은 원형 아이콘 버튼(.mnav) */
+.mlbl { display:inline-flex; align-items:center; gap:6px; height:40px; padding:0 6px 0 8px; border:0; border-radius:10px; background:none; font:inherit; font-size:18px; font-weight:700; color:var(--dp-text); white-space:nowrap; cursor:pointer; }
+/* 꺾쇠는 상자 가운데보다 1px 내려야 글자 면 가운데와 맞아 보인다(캡처 확인) */
+.mlbl svg { color:var(--dp-ui-gray); translate:0 1px; transition:transform .2s; }
+.mlbl[aria-expanded=true] svg { transform:rotate(180deg); }
+.mnav { width:40px; height:40px; display:flex; align-items:center; justify-content:center; padding:0; border:0; border-radius:50%; background:none; color:var(--dp-text-2); cursor:pointer; }
+.mlbl.pr, .mnav.pr { background:var(--dp-pr-card); }
+/* 월 선택: 연도 행과 월 격자. 칸은 연·월 선택 칸(.ps-option)을 쓴다 */
+.mpick .yr { display:flex; align-items:center; justify-content:space-between; max-width:var(--cal-mpick-max); margin:0 auto 8px; font-size:16px; font-weight:700; }
+.mpick .ms { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); justify-items:center; gap:8px; max-width:var(--cal-mpick-max); margin:0 auto; }
+.cal { padding:0 0 8px; }
+/* 달력 연·월 행(.cal-h): 이전 달 · 연·월(가운데) · 다음 달. 기간 시트 연·월 행과 같은 배치. 월 선택 중에는 좌우 버튼 자리를 비워 둔다 */
+.cal-h { display:flex; align-items:center; justify-content:space-between; height:48px; }
+.cal-h[data-picking] .mnav { visibility:hidden; }
+.cal .mpick { padding:4px 0 8px; }
+.cal-g { display:grid; grid-template-columns:repeat(7, 1fr); row-gap:calc(var(--cal-row) - var(--cal-num)); max-width:var(--cal-max); margin:0 auto; }
+.cal-g .cw { height:28px; display:flex; align-items:center; justify-content:center; font-size:var(--cal-wd-size); font-weight:500; color:var(--dp-text-sub); }
+.cal-g .cw.sun { color:var(--dp-sun); } .cal-g .cw.sat { color:var(--dp-sat); }
+/* 날짜 칸은 열 폭을 꽉 채우고, 숫자 원은 가운데 span에 그린다. 기간 띠는 칸 바탕으로 이어 칠한다 */
+.cal-g button { justify-self:stretch; display:flex; align-items:center; justify-content:center; height:var(--cal-num); padding:0; border:0; background:none; font:inherit; font-size:var(--cal-num-size); font-weight:500; color:var(--dp-text); font-variant-numeric:tabular-nums; cursor:pointer; }
+.cal-g button span { display:flex; align-items:center; justify-content:center; width:var(--cal-num); height:var(--cal-num); border-radius:50%; }
+/* 공휴일은 토요일이어도 일요일과 같은 빨간 글자 */
+.cal-g button.sat { color:var(--dp-sat); } .cal-g button.sun, .cal-g button.hol { color:var(--dp-sun); }
+/* 고르는 도구라 선택한 날을 파란 배경으로 가장 강하게 두고, 오늘은 파란 테두리로 구분한다 */
+.cal-g button.today span { box-shadow:inset 0 0 0 1.5px var(--dp-primary); color:var(--dp-primary-text); font-weight:700; }
+.cal-g button.sel span { background:var(--dp-primary); color:#fff; font-weight:700; box-shadow:none; }
+.cal-g button:disabled { color:var(--dp-disabled); cursor:default; }
+/* 기간 띠: 옅은 파랑(사이 날 글자 4.63:1). 시작일은 오른쪽 반, 종료일은 왼쪽 반만 칠해 원과 이어지게 한다 */
+.cal-g button.in { background:var(--dp-primary-soft); color:var(--dp-primary-text-tint); }
+.cal-g button.rs { background:linear-gradient(to right, transparent 50%, var(--dp-primary-soft) 50%); }
+.cal-g button.re { background:linear-gradient(to left, transparent 50%, var(--dp-primary-soft) 50%); }
+/* 날짜 칸 pressed: 숫자 원 배경. 흰 바탕은 달 이동 버튼과 같은 --dp-pr-card, 기간 띠 안은 켜진 칩과 같은 --dp-pr-face-soft, 선택한 날은 메인 컬러 버튼과 같은 --dp-pr-primary */
+.cal-g button.pr span { background:var(--dp-pr-card); }
+.cal-g button.in.pr span { background:var(--dp-pr-face-soft); }
+.cal-g button.sel.pr span { background:var(--dp-pr-primary); }
+/* 캘린더용 변형(.cal-g.cal-ev): 캘린더 화면 달력. 날짜 칸이 행 높이를 모두 쓰고(행 사이 간격 없음, 위 2), 숫자 원 아래에 그날 일정 표시를 둔다.
+   일정 점(.ev-dot)은 숫자 원 안쪽 아래에 붙인다. 다른 달 날짜(.out)는 숫자와 일정 점을 35%로 흐린다. 행 높이는 --cal-row */
+.cal-g.cal-ev { row-gap:0; }
+.cal-g.cal-ev button { position:relative; flex-direction:column; justify-content:flex-start; gap:3px; height:var(--cal-row); padding-top:2px; }
+.cal-g.cal-ev button.out > * { opacity:.35; }
+.cal-g.cal-ev .ev-dot { width:4px; height:4px; margin-top:-12px; border-radius:50%; background:var(--dp-gray-75); }
+.cal-g.cal-ev button.sel .ev-dot { background:#fff; }
+.pk-f { display:flex; align-items:center; justify-content:flex-end; padding-top:8px; }
+.pk-f button { height:var(--dp-btn-md-h); padding:0 14px; border:0; border-radius:10px; background:none; font:inherit; font-size:var(--dp-btn-md-fs); font-weight:600; color:var(--dp-slate); cursor:pointer; }
+.pk-f .ok { background:var(--dp-primary); color:#fff; }
+.pk-f .ok.pr { background:var(--dp-pr-primary); }
+/* 취소 등 글자 버튼 pressed: 회색 텍스트 버튼과 같이 글자 --dp-text */
+.pk-f button:not(.ok).pr { color:var(--dp-text); }
+/* 시각 휠(.wheel > .col): 오전/오후 · 시 · 분 열을 굴려 고른다. 가운데 연한 파란 띠가 선택 자리, 고른 값은 메인 컬러 글자. 그리는 코드는 devpro-datetime-field.js */
+.wheel { position:relative; display:flex; height:200px; margin:4px 0 0; }
+.wheel::before { content:""; position:absolute; left:0; right:0; top:80px; height:40px; border-radius:10px; background:var(--dp-primary-soft); }
+.wheel .col { position:relative; flex:1; overflow-y:scroll; scroll-snap-type:y mandatory; padding:80px 0; scrollbar-width:none; -webkit-mask-image:linear-gradient(transparent, #000 35%, #000 65%, transparent); mask-image:linear-gradient(transparent, #000 35%, #000 65%, transparent); }
+.wheel .col::-webkit-scrollbar { display:none; }
+.wheel .col div { height:40px; display:flex; align-items:center; justify-content:center; scroll-snap-align:center; font-size:18px; font-weight:500; color:var(--dp-gray-69); cursor:pointer; font-variant-numeric:tabular-nums; }
+.wheel .col div.sel { color:var(--dp-primary-text-tint); font-weight:600; }
+/* 일시 팝업(.dt-pop): 일시 칸(.dt-field)에 붙어 뜨는 선택 창. 화면을 어둡게 하지 않는다. 바탕은 드롭다운 목록(.dropdown)과 같은 테두리·모서리·그림자.
+   위 탭(.dt-tabs: 달력 · 시계), 달력(.cal) 또는 시각 휠(.wheel), 아래 취소·확인(.pk-f). 위아래 위치는 devpro-datetime-field.js가 정한다.
+   확인 버튼 → 팝업 오른쪽·아래 끝 12(팝업 위 끝 → 탭 아이콘과 같음).
+   ::after는 본문 끝 가까이에서 아래로 띄워도 팝업 아래 8px까지 스크롤되게 하는 자리 */
+.dt-pop { position:absolute; left:20px; right:20px; z-index:4; padding:0 12px 12px; border:1px solid var(--dp-blue-92); border-radius:12px; background:#fff; box-shadow:0 8px 24px rgba(37,49,81,.14); }
+.dt-pop[hidden] { display:none; }
+.dt-pop::after { content:""; position:absolute; left:0; right:0; bottom:-9px; height:8px; }
+.dt-pop .dt-date .pk-f { display:none; }
+.dt-tabs { display:flex; margin:0 -12px; border-bottom:1px solid var(--dp-line); }
+.dt-tabs button { position:relative; flex:1; display:flex; align-items:center; justify-content:center; height:40px; padding:0; border:0; background:none; color:var(--dp-ui-gray); cursor:pointer; }
+.dt-tabs button[aria-selected=true] { color:var(--dp-primary); }
+.dt-tabs button[aria-selected=true]::after { content:""; position:absolute; left:0; right:0; bottom:-1px; height:2px; border-radius:2px; background:var(--dp-primary); }
+/* pressed: 배경 없는 아이콘 버튼과 같이 아이콘 메인 컬러 */
+.dt-tabs button.pr { color:var(--dp-primary); }
+
+/* 작성 화면 헤더(.sh-top): 작성 화면(.write)과 입력 팝업(.form-sheet)이 같이 쓴다. 가운데 제목(h1 또는 h2) + 오른쪽 닫기(.x).
+   왼쪽 이전 단계(‹, .back)는 이전 단계가 있는 화면만 둔다. 버튼 칸 끝은 헤더 끝에서 --dp-hdr-btn-edge · 위 --dp-hdr-btn-top.
+   기본은 감싼 화면이 통째로 스크롤될 때 위에 붙는다(입력 팝업). 본문을 내리면 아래 선(.solid)을 붙이고, 붙이고 떼는 것은 devpro-write.js */
+.sh-top { box-sizing:border-box; position:sticky; top:0; z-index:5; flex:none; display:flex; align-items:center; justify-content:flex-end; height:var(--dp-header-h); padding:var(--dp-hdr-btn-top) var(--dp-hdr-btn-edge) 0 16px; background:#fff; }
+.sh-top h1, .sh-top h2 { position:absolute; left:60px; right:60px; margin:0; text-align:center; pointer-events:none; }
+.sh-top .back { position:absolute; left:var(--dp-hdr-btn-edge); top:var(--dp-hdr-btn-top); width:var(--dp-hdr-btn); height:var(--dp-hdr-btn); display:flex; align-items:center; justify-content:center; }
+.sh-top .back.pr { color:var(--dp-primary); }
+.sh-top.solid { box-shadow:inset 0 -1px 0 var(--dp-line); }
+/* 입력 팝업(.form-sheet): 화면을 다 덮고 값 몇 개를 넣거나 고치는 화면(기록을 새로 만드는 화면은 작성 화면 틀 .write). 헤더는 작성 화면 헤더(.sh-top), 아래는 취소 · 저장 고정 버튼(홈 바만큼 띄움) */
+.form-sheet { min-height:100vh; min-height:100dvh; display:flex; flex-direction:column; padding-top:var(--sat, env(safe-area-inset-top)); background:#fff; }
+/* 본문 아래 여백 = 스크롤 끝 → 버튼 위(--dp-scroll-end) + 본문을 덮는 버튼 영역(버튼 + 아래 12 + 홈 바) */
+.form-sheet-body { flex:1; padding:8px 20px calc(var(--dp-scroll-end) + var(--dp-btn-lg-h) + 12px + var(--sab, env(safe-area-inset-bottom))); }
+.form-sheet-foot { position:fixed; left:0; right:0; bottom:0; z-index:5; display:flex; gap:8px; padding:8px 8px calc(12px + var(--sab, env(safe-area-inset-bottom))); background:#fff; }
+.quick-nav .form-sheet-body { padding-bottom:calc(var(--dp-scroll-end) + var(--dp-btn-lg-h) + 12px + var(--dp-tabbar-h) + var(--sab, env(safe-area-inset-bottom))); }
+.quick-nav .form-sheet-foot { bottom:calc(var(--dp-tabbar-h) + var(--sab, env(safe-area-inset-bottom))); padding-bottom:12px; }
+.form-sheet-foot .bottom-btn { flex:1; margin:0; }
+.form-sheet-foot .cancel { flex:1; }
+/* 작성 화면(.write): 기록 하나를 새로 만드는 전체 화면(일정 추가·수정, 주간보고 등록). 헤더(.sh-top: 가운데 제목 + 오른쪽 닫기), 본문(.sh-body),
+   맨 위 큰 제목 칸(.ttl-w), 구분선으로 나눈 항목 묶음(.grp-i, 왼쪽 아이콘 .ic + 들여 쓴 내용), 아래 확인 버튼(.bottom-btn).
+   값 몇 개를 넣는 화면은 입력 팝업(.form-sheet)을 쓴다. 열고 닫는 방식(아래에서 올라오기 등)은 쓰는 곳에서 정한다 */
+.write { display:flex; flex-direction:column; padding-top:var(--sat, env(safe-area-inset-top)); background:#fff; color:var(--dp-text); }
+/* 따로 열리는 페이지로 쓸 때(.write.full): 뷰포트를 꽉 채워 덮고(하단 내비도 덮음), 본문만 스크롤한다 */
+.write.full { position:fixed; inset:0; z-index:30; }
+/* 작성 화면은 본문(.sh-body)만 스크롤하므로 헤더를 붙이지 않는다 */
+.write .sh-top{position:relative;z-index:auto}
+:where(.write button:not(.bottom-btn)){font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:left}
+.write .sh-body{flex:1;min-height:0;overflow-y:auto;padding:0 0 var(--dp-scroll-end-pad);overscroll-behavior:contain}
+.write .ttl-w{display:block;padding:4px 20px 0}
+.write .ttl-w input{width:100%;border:0;outline:0;padding:0;background:none;font:inherit;font-size:20px;font-weight:600;line-height:normal;color:var(--dp-text)}
+.write .ttl-w input::placeholder{color:var(--dp-placeholder-white)}
+/* 제목 행 오른쪽에 동작 하나를 둘 때(.ttl-w.with-act): 제목 칸은 남은 폭을 쓰고, 동작은 칩 버튼(.chip-btn). 예: 주간보고 등록 '최근 글' */
+.write .ttl-w.with-act{display:flex;align-items:center;gap:12px;padding-bottom:20px}
+.write .ttl-w.with-act input{flex:1;min-width:0}
+/* 동작 버튼(32)은 제목 글자(24)와 가운데를 맞추고 위아래 4씩 바깥으로 빼서 제목 칸 높이를 늘리지 않는다. 아래 여백 20 = 버튼 → 첫 구분선 16 + 4 */
+.write .ttl-w.with-act .chip-btn{margin:-4px 0}
+/* 항목 묶음 안쪽 위아래 16: 구분선에서 첫 요소, 마지막 요소에서 다음 구분선까지. 묶음 안 요소는 위아래 바깥 여백을 두지 않는다 */
+:root{--dp-grp-pad:16px}
+.write .grp-i{position:relative;padding:var(--dp-grp-pad) 0;border-top:1px solid var(--dp-line)}
+/* 첨부파일 행(.file-row, 높이 44)은 보이는 파일명·빼기 아이콘(16) 위가 14 비어 있어, 행이 묶음 맨 위에 올 때는 묶음 위 여백을 2로 둔다(구분선 → 파일명 16) */
+.write:not(.top-label) .grp-i:has(>.file-list:not(:empty)){padding-top:2px}
+/* 제목 칸 입력 중: 제목 아래 첫 구분선만 입력 중 테두리 색(--dp-focus)으로 바꿔 입력 중임을 보인다 */
+.write .ttl-w:has(input:focus) ~ .grp-i { border-top-color:var(--dp-focus); }
+.write .ttl-w:has(input:focus) ~ .grp-i ~ .grp-i { border-top-color:var(--dp-line); }
+/* 묶음 왼쪽 아이콘(20)은 첫 행 가운데(구분선 아래 24: 추가 버튼 · 첨부파일 행 모두)에 맞춘다 */
+.write .grp-i>.ic{position:absolute;left:21px;top:14px;color:var(--dp-text-sub)}
+/* 내용 칸: 아이콘 없이 좌우 20. 기본 높이 240px(화면이 낮으면 화면 높이의 40%까지만). 오른쪽 아래 크기 조절 표시(.memo-grip)를 끌어 132px ~ 화면 높이의 70%까지 바꾼다(devpro-write.js) */
+.write .memo{width:calc(100% - 40px);height:min(240px, 40dvh);min-height:132px;max-height:70dvh;margin:0 20px;padding:12px 14px 22px;resize:none;line-height:var(--dp-lh-multi)}
+.write .memo-grip{position:absolute;right:22px;bottom:18px;width:20px;height:20px;display:flex;align-items:center;justify-content:center;color:var(--dp-text-2);cursor:ns-resize;touch-action:none}
+.write .memo::placeholder{color:var(--dp-placeholder-white)}
+/* 첨부파일 목록: 묶음 왼쪽 아이콘(21~41) → 파일명 10(상세 화면 첨부파일 행의 아이콘 → 이름과 같음) */
+.write .file-list{margin:0 20px 0 51px}
+/* 추가 버튼(.tbtn.add)의 왼쪽 안쪽 여백 8px만큼 당겨, + 아이콘을 파일명 시작(51px)에 맞춘다 */
+.write .add-w{display:flex;padding:10px 20px 0 43px}
+/* 첨부파일이 없으면 추가 버튼이 묶음 맨 위에 온다 */
+.write .file-list:empty+.add-w{padding-top:0}
+/* 글자만 있는 추가 버튼(.tbtn.add, 높이 32)은 보이는 + 아이콘·글자 위아래가 8씩 비어 있다. 묶음 맨 위·맨 아래에 올 때 그만큼 바깥으로 빼서
+   라벨 → 버튼 8(라벨 → 칸과 같음), 버튼 → 구분선 16(묶음 안쪽 여백)에 맞춘다. 버튼 크기는 그대로다 */
+.write .add-w .tbtn.add{margin-bottom:-8px}
+.write .file-list:empty+.add-w .tbtn.add{margin-top:-8px}
+/* 참석자가 없어 추가 버튼만 있을 때: 왼쪽 안쪽 여백 8만큼 당겨 + 아이콘을 라벨 시작(20)에 맞춘다 */
+.write .people>.tbtn.add:only-child{margin:-8px 0 -8px -8px}
+/* 위 라벨 작성 묶음(.write.top-label): 묶음 왼쪽 아이콘 대신 묶음 위에 공용 라벨(.form-label)을 두고, 내용을 왼쪽 20에서 시작한다. 일정 추가·수정이 쓴다 */
+.write.top-label .grp-i>.form-label{margin:0 20px 8px}
+.write.top-label .file-list{margin:0 20px}
+/* 라벨 바로 아래 첨부파일 행: 행 위 빈 14만큼 올려 라벨 아래 여백 8이 라벨 → 파일명 간격이 되게 한다(라벨 → 칸과 같음) */
+.write.top-label .file-list:not(:empty){margin-top:-14px}
+.write.top-label .add-w{padding:0 20px 0 12px}
+/* 일시 칸(.dt-item > .form-label + .dt-field): 위 라벨 아래 날짜·시각 값 칸. 칸 모양은 입력칸(.text-input)과 같다(높이 48, 모서리 10, 테두리 --dp-line-strong).
+   오른쪽 달력 아이콘은 누르면 선택 창이 열린다는 표시. 일시 팝업이 열린 동안(aria-expanded=true) 입력 중 테두리, 오류(.err)는 오류 빨강 테두리. 그리는 코드는 devpro-datetime-field.js */
+/* 일시 칸 사이(시작 칸 → 종료 라벨)는 항목 묶음 안쪽 위아래(--dp-grp-pad, 16)와 같다. 묶음 위 여백은 항목 묶음(.grp-i) 안쪽 여백이 정하고, 라벨(p)의 기본 위 여백은 없앤다 */
+.dt-item{padding:0 20px}
+.dt-item+.dt-item{margin-top:var(--dp-grp-pad)}
+.dt-item>.form-label{margin-top:0}
+/* 오른쪽 여백 13 + 테두리 1: 칸 바깥 끝에서 달력 아이콘 칸 끝까지 14(칸 오른쪽 끝 아이콘 공통 위치) */
+.dt-field{box-sizing:border-box;display:flex;align-items:center;gap:8px;width:100%;height:48px;padding:0 13px 0 14px;border:1px solid var(--dp-line-strong);border-radius:10px;background:#fff;font:inherit;font-size:16px;font-weight:500;color:var(--dp-text);text-align:left;cursor:pointer}
+.dt-field[aria-expanded=true]{border-color:var(--dp-focus)}
+/* pressed: 흰 테두리 요소(작은 테두리 버튼 · 꺼진 필터 칩)와 같이 테두리만 --dp-ui-gray. 오류 테두리가 우선한다 */
+.dt-field.pr{border-color:var(--dp-ui-gray)}
+.dt-field.err{border-color:var(--dp-danger)}
+.dt-field .dt-v{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dt-field .dt-ic{flex:none;display:flex;color:var(--dp-ui-gray)}
+/* 항목(.form-item): 라벨 위 · 칸 아래. 라벨과 칸 사이 8, 항목 사이 24 */
+.form-item + .form-item { margin-top:24px; }
+.form-label { display:block; margin-bottom:8px; font-size:15px; font-weight:600; color:var(--dp-text); }
+/* 보조 문구(supporting text, .field-msg): 입력칸 아래 안내·오류를 같은 문구 하나로 쓴다. 칸과 4, 14 · 400. 기본은 보조 회색, 오류 상태(.err)는 색만 오류 빨강 */
+.field-msg { margin:4px 0 0; font-size:14px; font-weight:400; color:var(--dp-text-sub); }
+/* 문구가 없을 때는 자리를 차지하지 않는다 */
+.field-msg:empty { margin-top:0; }
+.field-msg.err { color:var(--dp-danger); }
+html.dark .field-msg { color:var(--dp-gray-51); }
+html.dark .field-msg.err { color:var(--dp-dk-danger); }
+/* 토글 행(.toggle-row, label): 라벨 아래에 테두리 없이 하위 라벨 왼쪽 · 토글 오른쪽. 높이는 토글(31)이 정해 라벨 → 토글 8, 토글 → 다음 항목 24(라벨 → 칸, 항목 사이와 같음). 행 어디를 눌러도 켜고 끈다 */
+.toggle-row { display:flex; align-items:center; justify-content:space-between; gap:12px;font-size:16px; font-weight:500; color:var(--dp-text); cursor:pointer; }
+/* 입력칸(.text-input): 높이 48, 모서리 10, 테두리 --dp-line-strong(#cdd2dc), 입력 중 --dp-focus. 오류(.err)는 오류 빨강 테두리로 입력 중보다 우선한다. 숫자 칸(.num)은 오른쪽 정렬 */
+.text-input { box-sizing:border-box; display:block; width:100%; height:48px; padding:0 14px; border:1px solid var(--dp-line-strong); border-radius:10px; outline:0; background:#fff; font:inherit; font-size:16px; font-weight:500; color:var(--dp-text); }
+.text-input:focus { border-color:var(--dp-focus); }
+.text-input.err { border-color:var(--dp-danger); }
+html.dark .text-input.err, html.dark .text-input.err:focus { border-color:var(--dp-dk-danger); }
+.text-input.num { text-align:right; font-variant-numeric:tabular-nums; }
+/* 토글(.toggle-switch): 51×31 트랙, 안쪽 흰 원 20. 켜면(aria-checked=true) 메인 컬러 트랙에 원이 오른쪽 */
+.toggle-switch { position:relative; flex:none; width:51px; height:31px; padding:0; border:0; border-radius:999px; background:var(--dp-gray-90); cursor:pointer; transition:background-color .2s, transform .1s; }
+.toggle-switch::before { content:""; position:absolute; top:50%; left:5.5px; width:20px; height:20px; border-radius:50%; background:#fff; box-shadow:0 3px 8px rgba(17,20,33,.15), 0 1px 1px rgba(17,20,33,.16); transform:translateY(-50%); transition:left .2s; }
+.toggle-switch[aria-checked=true] { background:var(--dp-primary); }
+.toggle-switch[aria-checked=true]::before { left:calc(100% - 25.5px); }
+/* 스핀(.stepper): 입력칸 테두리 안에 − | 값(가운데 정렬) | + . 칸 바깥 끝에서 − · + 아이콘 칸(20) 끝까지 좌우 모두 15(테두리 1 + 안쪽 8 + 버튼 안 6), − · + 누르는 영역은 버튼 32 × 46.
+   − · + 는 값을 바꾸는 버튼이라 칸 오른쪽 끝 표시 아이콘 위치(14) 규칙을 따르지 않는다 */
+.stepper { box-sizing:border-box; display:flex; align-items:center; height:48px; padding:0 8px; border:1px solid var(--dp-line-strong); border-radius:10px; background:#fff; }
+/* 입력 중 테두리: 숫자 칸에 입력할 때(:focus-within)와 − + 를 누른 뒤(.on, devpro-press.js가 붙이고 스핀 밖을 누르거나 포커스가 나가면 뗀다) */
+.stepper:focus-within, .stepper.on { border-color:var(--dp-focus); }
+.stepper input { flex:1; min-width:0; height:46px; padding:0; border:0; outline:0; background:none; font:inherit; font-size:16px; font-weight:500; text-align:center; color:var(--dp-text); font-variant-numeric:tabular-nums; }
+.stepper button { flex:none; width:32px; height:46px; display:flex; align-items:center; justify-content:center; padding:0; border:0; background:none; color:var(--dp-text); cursor:pointer; }
+.stepper button:disabled { color:var(--dp-disabled); cursor:default; }
+/* − + pressed: 배경 없는 아이콘 버튼 규칙(헤더 뒤로·닫기 등)과 같이 아이콘만 메인 컬러. 비활성일 때는 나타나지 않는다 */
+.stepper button.pr:not(:disabled) { color:var(--dp-primary); }
+
+/* 기간 선택 시트: 제목·시작·종료·월·연도 선택·완료. */
+
+  /* 시작 · 종료 칸 묶음: 바깥 네 모서리만 둥글게(시작 칸은 왼쪽 위 · 아래, 종료 칸은 오른쪽 위 · 아래), 모서리 10 */
+  .ps-head { display:flex; margin:0 0 4px; border-radius:10px; overflow:hidden; background:var(--dp-blue-97-2); }
+  .ps-head span { flex:1; min-width:0; display:flex; align-items:center; justify-content:center; height:48px; font-size:16px; font-weight:600; color:var(--dp-text); }
+  .ps-head span + span { border-left:1px solid var(--dp-blue-92); }
+  .ps-head span.ps-unset { font-weight:500; color:var(--dp-text-sub); }
+  /* 달력(.cal)·연·월 선택(.ps-choice) 아래 8만큼 스크롤 끝 → 아래 버튼 공통 여백에서 뺀다 */
+  .ps-sheet .body { padding-bottom:calc(var(--dp-scroll-end-pad) - 8px); }
+  .ps-month { display:flex; align-items:center; justify-content:space-between; height:48px; }
+  .ps-ym { display:flex; align-items:center; justify-content:center; gap:2px; font-size:18px; font-weight:700; }
+  .ps-ym button { min-width:44px; height:40px; padding:0 4px; border:0; border-radius:10px; background:transparent; color:var(--dp-text); font:inherit; text-align:center; cursor:pointer; }
+  .ps-compact { position:relative; width:88px; height:44px; gap:0; }
+  .ps-compact > button { position:absolute; top:0; width:44px; height:44px; padding:0; }
+  .ps-compact > button:first-of-type { left:0; }
+  .ps-compact > button:last-of-type { right:0; }
+  .ps-hit-text { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+  /* 연·월 글자는 누르는 영역(연도·월 각 44) 위에 그린다. pressed 배경은 누른 쪽 글자(연도 또는 월)만 감싼다 */
+  .ps-display { position:relative; z-index:1; pointer-events:none; white-space:nowrap; }
+  .ps-display .ps-y, .ps-display .ps-m { display:inline-block; padding:4px 2px; margin:-4px -2px; border-radius:8px; }
+  .ps-display .ps-dot { margin:0 1px; }
+  .ps-compact:has(> [data-choose=years].pr) .ps-y, .ps-compact:has(> [data-choose=months].pr) .ps-m { background:var(--dp-pr-card); }
+  .ps-ym button:focus-visible, .ps-option:focus-visible { outline:1px solid var(--dp-focus); }
+  .ps-choice { display:flex; flex-direction:column; padding-bottom:8px; }
+  .ps-options { flex:1; display:grid; grid-template-columns:repeat(4,1fr); grid-template-rows:repeat(3,1fr); align-items:center; justify-items:center; }
+  /* 연·월 선택 칸: 기간 시트·일시 팝업의 연·월 선택, 캘린더 화면·날짜 선택 도구의 월 선택이 함께 쓴다. 이번 달(.cur)은 파랑 글자, 고른 칸은 파란 배경. 열 폭이 64보다 좁으면 폭만 줄어든다 */
+  .ps-option { display:flex; align-items:center; justify-content:center; width:64px; max-width:100%; height:64px; padding:0; border:0; border-radius:8px; background:transparent; color:var(--dp-text); font:inherit; font-size:17px; cursor:pointer; }
+  .ps-option.cur { color:var(--dp-primary-text); font-weight:700; }
+  .ps-option[aria-current=true] { background:var(--dp-primary); color:white; font-weight:700; }
+  .ps-option.ps-trailing { color:var(--dp-text-sub); }
+  /* pressed: 연·월 버튼·연·월 선택 칸은 달 이동 버튼과 같은 --dp-pr-card, 고른 칸은 메인 컬러 버튼과 같은 --dp-pr-primary */
+  .ps-ym:not(.ps-compact) button.pr, .ps-option.pr { background:var(--dp-pr-card); }
+  .ps-option[aria-current=true].pr { background:var(--dp-pr-primary); }
+
+
+/* 목록의 기간·상세 검색과 아래 고정 글쓰기. */
+.period-tools { display:flex; align-items:center; gap:8px; }
+.period-tools > .period-field { flex:1; }
+.search-field.period-field { padding:0; }
+.period-value { flex:1; min-width:0; display:flex; align-items:center; gap:6px; height:48px; padding:6px 4px 6px 6px; text-align:left; }
+/* 달력 아이콘(18px)은 그림 크기를 두고 좌우 1px씩 더해 검색 돋보기(20px)와 같은 위치·간격에 둔다 */
+.period-value .lead svg { margin:0 1px; }
+.period-value .value { flex:1; min-width:0; padding-left:4px; font-size:16px; font-weight:500; color:var(--dp-text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+/* 기간 칸 pressed: 칸 모양(검색창 틀) 안만 꺼진 상세 검색 버튼 pressed와 같은 회색 */
+.period-field:has(.period-value.pr) { background:var(--dp-pr-gray); }
+.advanced-search { flex:none; width:48px; height:48px; display:flex; align-items:center; justify-content:center; border:0; border-radius:50%; background:var(--dp-field); color:var(--dp-text); }
+.advanced-search.on { background:var(--dp-search-active-bg); color:var(--dp-primary); }
+.advanced-search.pr { background:var(--dp-pr-gray); }
+.advanced-search.on.pr { background:var(--dp-pr-face-soft); }
+/* 바탕 위 검색 조건 칩(.p-chip.on-bg): 페이지 바탕 위에서 적용된 검색 조건을 보여 주는 빼기 칩. 색은 켜진 필터 칩과 같다(연한 파란 배경 + 메인 컬러 테두리 + 파란 글자·×), 모양은 빼기 칩(모서리 8 · ×) */
+.p-chip.on-bg { background:var(--dp-primary-soft); border-color:var(--dp-primary); color:var(--dp-primary-text-tint); }
+.p-chip.on-bg .p-x { color:var(--dp-primary-text-tint); }
+.p-chip.on-bg.pr { background:var(--dp-pr-face-soft); border-color:var(--dp-primary); }
+.p-chip.on-bg.pr .p-x { color:var(--dp-primary-text-tint); }
+.list-write-footer { position:fixed; left:0; right:0; bottom:0; z-index:21; display:flex; flex-direction:column; background:var(--dp-bg); }
+.list-write-footer .bottom-btn { display:flex; align-items:center; justify-content:center; text-decoration:none; }
+.quick-nav .list-write-footer { bottom:calc(var(--dp-tabbar-h) + var(--sab, env(safe-area-inset-bottom))); }
+/* 하단 내비 위에서는 홈 바 영역을 내비가 이미 띄우므로 버튼 아래는 12만 둔다 */
+.quick-nav .list-write-footer .bottom-btn { margin-bottom:12px; }
+/* 본문 칸 스크롤 화면은 본문(body)이 글쓰기 버튼 영역 위에서 끝나 스크롤바가 버튼 영역과 겹치지 않는다. 버튼 영역 높이 = 버튼 + 위 8 + 아래 12 */
+:root.body-scroll.has-list-write > body { height:calc(100% - var(--dp-btn-lg-h) - 20px - var(--sab, env(safe-area-inset-bottom))); }
+:root.body-scroll.has-list-write.quick-nav > body { height:calc(100% - var(--dp-btn-lg-h) - 20px - var(--dp-tabbar-h) - var(--sab, env(safe-area-inset-bottom))); }
+/* 목록 끝 → 글쓰기 버튼 위 = --dp-scroll-end. 페이지네이션이 있을 때는 페이지네이션 규칙을 따른다 */
+html.body-scroll.has-list-write:not(.has-pager) .page { padding-bottom:var(--dp-scroll-end-pad); }
+.has-list-write.has-pager .pager { bottom:calc(82px + var(--sab, env(safe-area-inset-bottom))); }
+.has-list-write.has-pager.quick-nav .pager { bottom:calc(82px + var(--dp-tabbar-h) + var(--sab, env(safe-area-inset-bottom))); }
+.choice-field { position:relative; text-align:left; }
+/* pressed: 일시 칸과 같이 테두리만 --dp-ui-gray. 오류 테두리(.text-input.err)가 우선한다 */
+.choice-field.pr:not(.err) { border-color:var(--dp-ui-gray); }
+/* 꺾쇠(선택 칸 꺾쇠 20, chevron-down-20-field): right 13 + 테두리 1 = 칸 바깥 끝에서 아이콘 칸 끝까지 14(칸 오른쪽 끝 아이콘 공통 위치) */
+.choice-field .chev { position:absolute; right:13px; top:50%; margin-top:-10px; color:var(--dp-ui-gray); }
+/* 작성자 선택 시트(.writer-sheet, devpro-search-sheet.js): 검색창(흰 배경 위 공통 변형 .on-white) · 사용자 목록. 한 명만 고른다(라디오). 선택한 사람은 아래 버튼 이름으로 보인다. 목록만 스크롤한다 */
+.writer-sheet .panel { height:85vh; }
+.writer-sheet .body { flex:1; min-height:0; display:flex; flex-direction:column; padding:8px 0 0; overflow:hidden; }
+.writer-sheet .w-search { flex:none; margin:0 20px; }
+/* 목록 아래 여백은 스크롤 끝 → 아래 버튼 공통 여백(.body 아래 여백은 0) */
+.writer-sheet .w-list { flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; margin-top:12px; padding:0 0 var(--dp-scroll-end-pad); }
+/* 사용자 목록 행은 공통 .pp */
+.writer-sheet .pp .rd { order:-1; flex:none; width:22px; height:22px; border-radius:50%; box-shadow:inset 0 0 0 1.5px var(--dp-ui-gray); background:#fff; }
+.writer-sheet .pp[aria-checked=true] .rd { box-shadow:inset 0 0 0 6px var(--dp-text); }

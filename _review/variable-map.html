@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>모바일 변수 구조 지도</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="../devpro-common.css">
+<style>
+  :root {
+    --sub:#5b6382; --line:#dde1ea; --card:#fff;
+    --figma:#7a5af5; --figma-soft:#efeafe; --nexa:#0e8a5f; --nexa-soft:#e3f5ee; --hl-soft:#e8effd; --todo:#c2410c;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:"Pretendard", sans-serif; color:var(--dp-text); background:var(--dp-gray-95); }
+  header { position:sticky; top:0; z-index:5; display:flex; flex-wrap:wrap; align-items:center; gap:10px 20px; padding:14px 24px; background:var(--card); border-bottom:1px solid var(--line); }
+  header h1 { margin:0; font-size:18px; font-weight:700; }
+  header .meta { font-size:13px; color:var(--sub); }
+  .spacer { flex:1; }
+  .seg { display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .seg button { border:0; padding:6px 14px; background:#fff; font:inherit; font-size:13px; color:var(--sub); cursor:pointer; }
+  .seg button[aria-pressed=true] { background:var(--dp-text); color:#fff; }
+  main { padding:0 24px 60px; }
+  section { margin-top:28px; }
+  section > h2 { margin:0 0 4px; font-size:17px; font-weight:700; }
+  section > p.lead { margin:0 0 14px; font-size:14px; color:var(--sub); line-height:var(--dp-lh-multi); }
+  /* 태그 색: 모양은 공통 .tag, 색만 이 페이지에서 정한다 */
+  .figma { background:var(--figma-soft); color:var(--figma); }
+  .nexa { background:var(--nexa-soft); color:var(--nexa); }
+  .add { background:#fff1e6; color:var(--todo); }
+  .muted { background:var(--dp-gray-95); color:var(--sub); }
+
+  /* 한눈에: 층 띠 */
+  .layers { display:flex; align-items:stretch; gap:0; overflow-x:auto; padding-bottom:4px; }
+  .layer { flex:1 1 120px; min-width:120px; padding:14px; word-break:keep-all; border-radius:12px; background:var(--card); cursor:pointer; }
+  .layer:hover { box-shadow:inset 0 0 0 1.5px var(--dp-primary); }
+  .layer b { display:block; font-size:12px; color:var(--sub); font-weight:600; }
+  .layer strong { display:block; margin:2px 0 6px; font-size:16px; }
+  .layer span { display:block; font-size:12.5px; color:var(--sub); line-height:var(--dp-lh-multi); }
+  .layer .n { margin-top:8px; font-size:13px; font-weight:700; color:var(--dp-text); }
+  .layer.none .n { color:var(--dp-text-faint); font-weight:500; }
+  .arrow { flex:none; width:48px; white-space:nowrap; display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--dp-text-faint); font-size:11px; }
+  .arrow i { font-style:normal; font-size:20px; }
+  .legend { display:flex; flex-wrap:wrap; gap:8px 18px; margin-top:12px; font-size:13px; color:var(--sub); }
+
+  /* 따라가기 */
+  .pick { display:grid; gap:8px; margin-bottom:14px; }
+  .pick .pg { display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
+  .pick .pg b { width:120px; flex:none; font-size:12px; color:var(--sub); }
+  .pick button { border:1px solid var(--line); background:#fff; border-radius:999px; padding:6px 12px; font:inherit; font-size:13px; color:var(--sub); cursor:pointer; }
+  .pick button[aria-pressed=true] { border-color:var(--dp-primary); background:var(--hl-soft); color:var(--dp-primary-text-tint); font-weight:600; }
+  .trace { display:flex; align-items:stretch; overflow-x:auto; padding:4px 0 6px; }
+  .step { flex:0 0 210px; padding:14px; border-radius:14px; background:var(--card); }
+  .step.end { box-shadow:inset 0 0 0 2px var(--dp-primary); }
+  .step .ly { font-size:12px; font-weight:600; color:var(--sub); }
+  .step .big { display:flex; gap:6px; margin:10px 0; }
+  .step .big div { flex:1; height:54px; border-radius:10px; box-shadow:inset 0 0 0 1px rgba(0,0,0,.08); display:flex; align-items:flex-end; padding:5px 7px; font-size:11px; font-weight:600; }
+  .step .nm { font-size:14px; font-weight:700; }
+  .step .val { margin-top:2px; font-size:12px; color:var(--sub); }
+  .step .use { margin-top:8px; font-size:12px; color:var(--sub); line-height:var(--dp-lh-multi); }
+  .step .tags { margin-top:8px; display:flex; flex-wrap:wrap; gap:4px; }
+  .link { flex:none; width:64px; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:11px; color:var(--sub); text-align:center; }
+  .link i { font-style:normal; font-size:22px; color:var(--dp-primary); }
+  .trace-note { margin-top:10px; font-size:13px; color:var(--sub); line-height:var(--dp-lh-multi); }
+
+  /* 전체 지도 */
+  .map-wrap { position:relative; overflow-x:auto; padding:4px 0 10px; }
+  /* 아이콘 → 뿌리 선은 열 왼쪽 바깥으로 돌아가므로 왼쪽에 자리를 둔다 */
+  .map { position:relative; display:flex; gap:56px; align-items:flex-start; min-width:max-content; padding-left:44px; }
+  svg.wires { position:absolute; left:0; top:0; z-index:0; pointer-events:none; overflow:visible; }
+  /* 선은 카드 뒤로 지나가게 열을 선 위에 둔다 */
+  .col { position:relative; z-index:1; }
+  .col > h3, .col > p { width:fit-content; background:var(--dp-gray-95); }
+  .col { width:250px; flex:none; }
+  .col > h3 { margin:0 0 4px; font-size:15px; font-weight:700; }
+  .col > p { margin:0 0 10px; font-size:12px; color:var(--sub); line-height:var(--dp-lh-multi); min-height:34px; }
+  .grp { margin-bottom:14px; padding:10px; border-radius:12px; background:var(--card); }
+  .grp > h4 { margin:0 0 8px; font-size:13px; font-weight:700; color:var(--sub); }
+  .v { position:relative; display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:8px; cursor:pointer; }
+  .v + .v { margin-top:2px; }
+  .v:hover { background:var(--dp-blue-97-2); }
+  .v.on { background:var(--hl-soft); box-shadow:inset 0 0 0 1.5px var(--dp-primary); }
+  .v.chain { background:var(--hl-soft); }
+  .v.dim { opacity:.35; }
+  .sw { flex:none; width:22px; height:22px; border-radius:6px; box-shadow:inset 0 0 0 1px rgba(0,0,0,.08); background:#fff; }
+  .todo { background:repeating-linear-gradient(45deg, #fff 0 4px, #fde2cf 4px 8px) !important; }
+  .clear { background:conic-gradient(var(--dp-gray-91) 25%, #fff 0 50%, var(--dp-gray-91) 0 75%, #fff 0) 0 0 / 8px 8px !important; }
+  .v .nm { flex:1; min-width:0; font-size:13px; font-weight:600; }
+  .v .nm small { display:block; font-size:11px; font-weight:500; color:var(--dp-text-faint); }
+  .v .badges { display:flex; gap:3px; flex:none; }
+  /* 좁은 화면: 열을 세로로 쌓는다. 선은 열 왼쪽 바깥으로 돈다 */
+  @media (max-width:700px) {
+    .map-wrap { overflow-x:visible; }
+    .map { flex-direction:column; gap:28px; min-width:0; }
+    .col { width:100%; }
+  }
+  details { margin-top:28px; padding:14px 16px; border-radius:12px; background:var(--card); }
+  details summary { cursor:pointer; font-size:16px; font-weight:700; }
+  details p { margin:8px 0 10px; font-size:13px; color:var(--sub); }
+  pre { margin:0; padding:12px; border-radius:8px; background:var(--dp-text); color:var(--dp-dk-text); font-size:12px; line-height:var(--dp-lh-multi); overflow:auto; max-height:460px; }
+  pre .c { color:var(--dp-dk-text-sub); }
+  .err { margin:20px 0; padding:14px; border-radius:10px; background:#fdecee; color:#a3202d; font-size:14px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>모바일 변수 구조 지도</h1>
+  <span class="meta" id="stamp">불러오는 중</span>
+  <span class="spacer"></span>
+  <span class="seg" role="group" aria-label="색 모드"><button type="button" data-mode="light" aria-pressed="true">라이트</button><button type="button" data-mode="dark" aria-pressed="false">다크</button></span>
+</header>
+<main>
+  <section>
+    <h2>한눈에 보는 구조</h2>
+    <p class="lead">Figma 변수 파일 하나가 아래 층으로 나뉜다. 화면에 칠하는 색은 오른쪽(구체적인 층)에서 고르고, 그 색은 왼쪽 층의 색을 이어받는다. 왼쪽 색 하나를 바꾸면 그것을 이어받는 오른쪽 색이 모두 함께 바뀐다.</p>
+    <div class="layers" id="layers"></div>
+    <div class="legend"><span><span class="tag figma">Figma 전용</span> Figma 안에서만 쓰고 넥사크로로 나가지 않음</span><span><span class="tag nexa">출력</span> 넥사크로 프리디파인 <code>&lt;Define&gt;</code>으로 나감</span><span><span class="tag add">추가</span> Vtheme에 없어 새로 만든 자리</span><span><span class="sw todo" style="display:inline-block;width:14px;height:14px;vertical-align:-2px"></span> 아직 정할 값</span></div>
+  </section>
+
+  <section>
+    <h2>하나 골라 따라가 보기</h2>
+    <p class="lead">화면에 쓰는 색 하나를 고르면, 그 색이 어디서 오는지 왼쪽 끝 원천까지 보여 준다. 각 칸의 왼쪽 색은 라이트, 오른쪽은 다크다.</p>
+    <div class="pick" id="pick"></div>
+    <div class="trace" id="trace"></div>
+    <div class="trace-note" id="traceNote"></div>
+  </section>
+
+  <section>
+    <h2>전체 지도</h2>
+    <p class="lead">모든 변수와 이어받는 선. 변수를 누르면 연결된 경로만 진하게 남는다.</p>
+    <div class="map-wrap"><div class="map" id="map"><svg class="wires" id="wires"></svg></div></div>
+  </section>
+
+  <details>
+    <summary>넥사크로로 나가는 모습 (미리보기)</summary>
+    <p>출력 표시가 있는 변수만 모았다. 이어받는 변수도 출력 대상이면 <code>ref</code>로, 아니면 값으로 풀려서 나간다. 기본 그룹은 라이트 값, 다크 그룹은 라이트와 다르게 나가는 것만 덮어쓴다. 실제 넥사크로 동작 확인 전이다.</p>
+    <pre id="xml"></pre>
+  </details>
+</main>
+
+<script>
+const SRC = "모바일-변수-표.md";
+const LAYERS = [
+  { key: "root", title: "뿌리 팔레트", short: "색 원본", desc: "가장 아래 원천 색. Figma 전용.", groups: ["predefine"] },
+  { key: "icon", title: "아이콘", short: "아이콘 색", desc: "아이콘 색. Figma 전용.", groups: ["icon"] },
+  { key: "role", title: "역할", short: "용도 이름", desc: "기본 배경·글자·선, 메인 컬러.", groups: ["default", "primary"] },
+  { key: "mid", title: "중간 묶음", short: "묶음 원천", desc: "입력류(common), 버튼류(action) 등.", groups: ["common", "action", "item", "choice", "table", "date", "scroll", "container", "label"] },
+  { key: "comp", title: "컴포넌트", short: "컴포넌트 자리", desc: "버튼·입력칸·검색창의 상태별 색.", groups: ["button", "input", "searchbox", "checkbox", "radio", "listbox", "tab", "menu"] },
+  { key: "cls", title: "변형 클래스", short: "모양이 다른 변형", desc: "강조 버튼처럼 달라지는 자리만.", groups: ["classbtn"] },
+  { key: "frame", title: "프레임", short: "화면 범위 전용", desc: "MF 메인, NAVF 하단 내비, POP 등.", groups: ["MF", "NAVF", "TF", "WF", "POP", "LOGIN"] }
+];
+const layerOf = name => { const g = name.split("/")[0]; return LAYERS.find(l => l.groups.includes(g)) || LAYERS.find(l => l.key === "comp"); };
+let vars = [], byName = new Map(), mode = "light", sel = null, traceSel = null, chainSet = new Set(), hoverSet = null, hoverName = null;
+// 강조 기준: 마우스를 올린 변수가 있으면 그것, 없으면 누른 변수
+const focusSet = () => hoverSet || (sel ? chainSet : null);
+const focusName = () => hoverName || sel;
+
+function parse(md) {
+  const out = [];
+  let header = null;
+  for (const ln of md.split(/\r?\n/)) {
+    if (!ln.startsWith("|")) { header = null; continue; }
+    const cells = ln.slice(1, ln.endsWith("|") ? -1 : undefined).split("|").map(s => s.trim());
+    if (cells.every(c => /^-+$/.test(c))) continue;
+    if (!header) { header = cells; continue; }
+    if (!/Figma 이름/.test(header[0])) continue;
+    const col = k => { const i = header.findIndex(h => h.includes(k)); return i < 0 ? "" : cells[i] || ""; };
+    const m = cells[0].match(/`([^`]+)`/); if (!m) continue;
+    const webM = col("WEB").match(/`([^`]+)`/);
+    out.push({ name: m[1], added: /\(추가\)/.test(cells[0]), light: col("라이트"), dark: col("다크"), web: webM ? webM[1] : "", note: col("지금 코드") });
+  }
+  return out;
+}
+const refOf = v => { const m = (v || "").match(/→\s*`([^`]+)`/); return m ? m[1] : null; };
+// 색 값: #rrggbb 또는 rgba(...)
+const hexOf = v => { const m = (v || "").match(/#[0-9a-fA-F]{6}|rgba\([^)]*\)/); return m ? m[0].toLowerCase().replace(/\s/g, "") : null; };
+const raw = (v, md) => md === "dark" ? v.dark : v.light;
+const plain = s => (s || "").replace(/`/g, "");
+// 이름은 하이픈(-)과 빗금(/) 뒤에서만 줄바꿈한다
+const brk = s => s.replace(/\//g, "/<wbr>");
+function resolve(name, md, seen = new Set()) {
+  const v = byName.get(name); if (!v || seen.has(name)) return null; seen.add(name);
+  const r = refOf(raw(v, md)); if (r) return resolve(r, md, seen);
+  if (/투명/.test(raw(v, md))) return "transparent";
+  return hexOf(raw(v, md));
+}
+const swStyle = c => c === "transparent" ? 'class="clear"' : c ? `style="background:${c}"` : 'class="todo"';
+const badgesOf = v => (v.web ? `<span class="tag nexa">출력</span>` : (["root", "icon"].includes(layerOf(v.name).key) ? `<span class="tag figma">Figma 전용</span>` : "")) + (v.added ? `<span class="tag add">추가</span>` : "");
+function pathOf(name, md) { const p = []; let cur = name, g = 0; while (cur && g++ < 20) { p.push(cur); const x = byName.get(cur); cur = x ? refOf(raw(x, md)) : null; } return p; }
+function users(name, md) { const s = new Set(); const down = n => vars.forEach(v => { if (refOf(raw(v, md)) === n && !s.has(v.name)) { s.add(v.name); down(v.name); } }); down(name); return [...s]; }
+
+function renderLayers() {
+  const box = document.getElementById("layers");
+  box.innerHTML = LAYERS.map((L, i) => {
+    const n = vars.filter(v => layerOf(v.name) === L).length;
+    return (i ? `<div class="arrow"><i>←</i>이어받음</div>` : "") + `<div class="layer${n ? "" : " none"}" data-k="${L.key}"><b>${i + 1}층 · ${L.short}</b><strong>${L.title}</strong><span>${L.desc}</span><div class="n">${n ? "변수 " + n + "개" : "아직 없음"}</div></div>`;
+  }).join("");
+  box.querySelectorAll(".layer").forEach(el => el.onclick = () => document.querySelector(`.col[data-layer="${el.dataset.k}"]`)?.scrollIntoView({ behavior: "smooth", block: "start", inline: "start" }));
+}
+
+function renderPick() {
+  // 따라가 볼 후보: 다른 변수가 이어받지 않는 가장 구체적인 변수(오른쪽 끝)
+  const leaves = vars.filter(v => !vars.some(x => refOf(x.light) === v.name || refOf(x.dark) === v.name) && !["root", "icon"].includes(layerOf(v.name).key));
+  if (!traceSel || !byName.has(traceSel)) traceSel = (byName.get("input/input-bg-nm") || leaves[0] || vars[0] || {}).name;
+  // 컴포넌트·클래스 변수는 '속성·상태'를 한국어로, 역할 변수는 쓰는 곳 설명으로 이름을 붙인다
+  const PROP = { bg: "배경", bdr: "테두리", clr: "글자", ico: "아이콘" }, STATE = { nm: "기본", pu: "누름", dis: "비활성", fo: "입력 중", inv: "오류", ntxt: "안내 글자", se: "선택", ro: "읽기 전용", ess: "필수", today: "오늘", range: "기간", sub: "보조", gradient: "그라데이션" };
+  const label = v => {
+    const m = v.name.split("/").pop().match(/-(bg|bdr|clr|ico)-([a-z]+?)(\d?)$/);
+    if (m && !["default", "primary", "common"].includes(v.name.split("/")[0])) return `${PROP[m[1]]} · ${STATE[m[2]] || m[2]}${m[3] ? " " + m[3] : ""}`;
+    const u = plain(v.note).split(":").pop().split(/[(,]/)[0].trim(); return (u.length > 16 ? u.slice(0, 16) + "…" : u) || v.name.split("/").pop();
+  };
+  const gk = n => { const p = n.split("/"); return p.length > 2 ? p.slice(0, 2).join("/") : p[0]; };
+  // 그룹(컴포넌트·클래스·역할)별로 묶어 보인다. 구체적인 층부터
+  const groups = [...new Set(leaves.map(v => gk(v.name)))].sort((a, b) => LAYERS.indexOf(layerOf(b + "/x")) - LAYERS.indexOf(layerOf(a + "/x")));
+  // 같은 묶음 안에서 이름이 겹치면 변수 이름에서 서로 다른 부분(속성 앞 단어)을 덧붙인다
+  const labels = g => {
+    const list = leaves.filter(v => gk(v.name) === g), base = list.map(label);
+    return list.map((v, i) => {
+      const same = list.filter((_, j) => base[j] === base[i]);
+      if (same.length < 2) return [v, base[i]];
+      const toks = same.map(x => x.name.split("/").pop().split("-"));
+      let k = 0; while (toks.every(t => t[k] === toks[0][k])) k++;
+      const t = v.name.split("/").pop().split("-"), end = t.findIndex((x, j) => j >= k && /^(bg|bdr|clr|ico)$/.test(x));
+      const mid = t.slice(k, end < 0 ? k : end).join("-");
+      return [v, mid ? `${base[i]} (${mid})` : base[i]];
+    });
+  };
+  document.getElementById("pick").innerHTML = groups.map(g => `<div class="pg"><b>${brk(g.replace("classbtn/", ""))}</b>${labels(g).map(([v, t]) => `<button type="button" data-n="${v.name}" aria-pressed="${v.name === traceSel}" title="${v.name}">${t}</button>`).join("")}</div>`).join("");
+  document.querySelectorAll("#pick button").forEach(b => b.onclick = () => { traceSel = b.dataset.n; renderPick(); renderTrace(); });
+}
+
+function renderTrace() {
+  const box = document.getElementById("trace");
+  if (!traceSel) { box.innerHTML = ""; return; }
+  const p = pathOf(traceSel, mode).reverse();
+  box.innerHTML = p.map((n, i) => {
+    const v = byName.get(n); if (!v) return "";
+    const L = layerOf(n), cl = resolve(n, "light"), cd = resolve(n, "dark");
+    const own = refOf(raw(v, mode)) ? "→ 왼쪽 칸을 이어받음" : (hexOf(raw(v, mode)) || plain(raw(v, mode)));
+    const many = users(n, mode).length;
+    return (i ? `<div class="link"><i>←</i>이어받음</div>` : "") + `<div class="step${i === p.length - 1 ? " end" : ""}">
+      <div class="ly">${LAYERS.indexOf(L) + 1}층 · ${L.title}</div>
+      <div class="big"><div ${swStyle(cl)}><span style="color:${cl && cl !== "transparent" && lum(cl) < .4 ? "#fff" : "var(--dp-text)"}">라이트</span></div><div ${swStyle(cd)}><span style="color:${cd && cd !== "transparent" && lum(cd) < .4 ? "#fff" : "var(--dp-text)"}">다크</span></div></div>
+      <div class="nm">${brk(n)}</div><div class="val">${brk(own)}</div>
+      ${v.note ? `<div class="use">${plain(v.note)}</div>` : ""}
+      <div class="tags">${badgesOf(v)}${many ? `<span class="tag muted">이 칸을 이어받는 변수 ${many}개</span>` : ""}</div></div>`;
+  }).join("");
+  const last = p[p.length - 1];
+  document.getElementById("traceNote").innerHTML = p.length > 1
+    ? `맨 왼쪽 <b>${p[0]}</b> 값을 바꾸면 이 색을 포함해 ${users(p[0], mode).length}개 변수가 함께 바뀐다. 이 색만 따로 바꾸려면 오른쪽 칸에 직접 값을 둔다.`
+    : `<b>${last}</b>은(는) 다른 변수를 이어받지 않고 직접 값을 가진다.`;
+}
+// 밝기(글자색 고르기용). rgba는 흰 바탕 위로 보고 밝다고 친다
+function lum(h) { if (!h.startsWith("#")) return 1; const c = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255); return .2126 * c[0] + .7152 * c[1] + .0722 * c[2]; }
+
+function renderMap() {
+  const map = document.getElementById("map"), svg = document.getElementById("wires");
+  map.querySelectorAll(".col").forEach(e => e.remove());
+  let rootCol = null;
+  for (const L of LAYERS) {
+    // 아이콘은 뿌리 팔레트를 이어받으므로 뿌리와 같은 열 아래에 둔다
+    const col = L.key === "icon" && rootCol ? rootCol : document.createElement("div");
+    if (col !== rootCol) { col.className = "col"; col.dataset.layer = L.key; }
+    if (L.key === "root") rootCol = col;
+    col.insertAdjacentHTML("beforeend", `<h3${L.key === "icon" ? ' style="margin-top:22px"' : ""}>${LAYERS.indexOf(L) + 1}층 · ${L.title}</h3><p>${L.desc}</p>`);
+    const mine = vars.filter(v => layerOf(v.name) === L);
+    if (!mine.length) col.insertAdjacentHTML("beforeend", `<div class="empty">아직 없음. 다음 단계에서 채운다.</div>`);
+    // 그룹 단위: 세 단계 이름(classbtn/submit-btn/…)은 두 단계까지를 그룹으로 본다
+    const gk = n => { const p = n.split("/"); return p.length > 2 ? p.slice(0, 2).join("/") : p[0]; };
+    for (const g of [...new Set(mine.map(v => gk(v.name)))]) {
+      const box = document.createElement("div"); box.className = "grp"; box.innerHTML = `<h4>${g}/</h4>`;
+      for (const v of mine.filter(x => gk(x.name) === g)) {
+        const res = resolve(v.name, mode), ref = refOf(raw(v, mode));
+        const el = document.createElement("div"); el.className = "v"; el.dataset.name = v.name; el.tabIndex = 0;
+        el.innerHTML = `<span class="sw" ${swStyle(res)}></span><span class="nm">${v.name.split("/").pop()}<small>${ref ? "→ " + brk(ref) : (res || "정할 값")}</small></span><span class="badges">${badgesOf(v)}</span>`;
+        el.onclick = () => select(v.name);
+        el.onkeydown = e => { if (e.key === "Enter") select(v.name); };
+        // 마우스를 올리면 그 변수와 이어진 변수·선을 잠시 강조하고, 내리면 선택 상태로 돌아간다
+        el.onmouseenter = () => { hoverSet = new Set([...pathOf(v.name, mode), ...users(v.name, mode)]); hoverName = v.name; highlight(); wires(); };
+        el.onmouseleave = () => { hoverSet = null; hoverName = null; highlight(); wires(); };
+        box.appendChild(el);
+      }
+      col.appendChild(box);
+    }
+    if (!col.parentNode) map.appendChild(col);
+  }
+  map.prepend(svg);
+  requestAnimationFrame(() => { wires(); highlight(); });
+}
+function wires() {
+  const map = document.getElementById("map"), svg = document.getElementById("wires"), mr = map.getBoundingClientRect();
+  svg.setAttribute("width", map.scrollWidth); svg.setAttribute("height", map.scrollHeight);
+  let html = "";
+  for (const v of vars) {
+    const ref = refOf(raw(v, mode)); if (!ref) continue;
+    const a = map.querySelector(`.v[data-name="${CSS.escape(v.name)}"]`), b = map.querySelector(`.v[data-name="${CSS.escape(ref)}"]`);
+    if (!a || !b) continue;
+    const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+    const fs = focusSet(), on = fs && fs.has(v.name) && fs.has(ref);
+    const y1 = ra.top - mr.top + ra.height / 2, y2 = rb.top - mr.top + rb.height / 2;
+    let d;
+    if (Math.abs(ra.left - rb.left) < 5) { const x = ra.left - mr.left, bend = 14 + Math.min(30, Math.abs(y1 - y2) / 12); d = `M${x},${y1} C${x - bend},${y1} ${x - bend},${y2} ${x},${y2}`; }
+    else { const x1 = ra.left - mr.left, x2 = rb.right - mr.left, dx = Math.max(30, (x1 - x2) / 2); d = `M${x1},${y1} C${x1 - dx},${y1} ${x2 + dx},${y2} ${x2},${y2}`; }
+    html += `<path d="${d}" fill="none" style="stroke:${on ? "var(--dp-primary)" : "#b9c0d0"}" stroke-width="${on ? 2.4 : 1.2}" ${fs && !on ? 'opacity=".15"' : ""}/>`;
+  }
+  svg.innerHTML = html;
+}
+function select(name) {
+  sel = sel === name ? null : name;
+  chainSet = sel ? new Set([...pathOf(sel, mode), ...users(sel, mode)]) : new Set();
+  highlight(); wires();
+  if (sel && layerOf(sel).key !== "root" && layerOf(sel).key !== "icon") { traceSel = sel; renderPick(); renderTrace(); }
+}
+function highlight() {
+  const fs = focusSet(), fn = focusName();
+  document.querySelectorAll(".v").forEach(e => {
+    e.classList.toggle("on", e.dataset.name === fn);
+    e.classList.toggle("chain", !!fs && fs.has(e.dataset.name) && e.dataset.name !== fn);
+    e.classList.toggle("dim", !!fs && !fs.has(e.dataset.name));
+  });
+}
+
+function xml() {
+  const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  const line = (v, md) => {
+    const r = refOf(raw(v, md)), rv = r && byName.get(r);
+    if (rv && rv.web) return esc(`<Define id="${v.web}" ref="${rv.web}"/>`);
+    const val = resolve(v.name, md);
+    if (!val) return `<span class="c">&lt;!-- ${esc(v.web)}: 정할 값 --&gt;</span>`;
+    return esc(`<Define id="${v.web}" value="${val.startsWith("#") ? val.toUpperCase() : val}"/>`);
+  };
+  const ex = vars.filter(v => v.web), out = [];
+  out.push(esc('<Group id="Default" type="root-cssvariable">'));
+  ex.forEach(v => out.push("  " + line(v, "light")));
+  out.push(esc("</Group>"), esc('<Group id="Dark" type="root-class-cssvariable" colorscheme-mode="dark">'));
+  ex.forEach(v => { const l = line(v, "dark"); if (l !== line(v, "light")) out.push("  " + l); });
+  out.push(esc("</Group>"));
+  return out.join("\n");
+}
+
+function renderAll() {
+  renderLayers(); renderPick(); renderTrace(); renderMap();
+  document.getElementById("xml").innerHTML = xml();
+  document.getElementById("stamp").textContent = `변수 ${vars.length}개 · 넥사크로로 나가는 변수 ${vars.filter(v => v.web).length}개`;
+}
+// 표는 페이지를 열거나 새로 고칠 때 한 번 읽는다
+fetch(SRC, { cache: "no-store" }).then(r => r.text()).then(t => {
+  vars = parse(t); byName = new Map(vars.map(v => [v.name, v]));
+  renderAll();
+}).catch(() => {
+  document.querySelector("main").insertAdjacentHTML("afterbegin", `<div class="err">변수 표(${SRC})를 읽지 못했다. 이 PC 주소(http://localhost:8090/_review/variable-map.html)로 열어야 한다.</div>`);
+});
+document.querySelectorAll(".seg button").forEach(b => b.onclick = () => {
+  mode = b.dataset.mode;
+  document.querySelectorAll(".seg button").forEach(x => x.setAttribute("aria-pressed", x === b));
+  chainSet = sel ? new Set([...pathOf(sel, mode), ...users(sel, mode)]) : new Set();
+  renderTrace(); renderMap();
+});
+addEventListener("resize", () => wires());
+</script>
+</body>
+</html>
